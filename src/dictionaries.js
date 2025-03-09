@@ -110,8 +110,8 @@ function sortMatches(matches, method, direction) {
     return matches;
 }
 
-// Expose dictionaries to global scope for userscript use
-window.dictionaries = {
+// Initialize dictionaries or use existing one to prevent duplication
+window.dictionaries = window.dictionaries || {
     dictionaries,
     letterScores,
     calculateRarityScore,

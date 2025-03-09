@@ -185,5 +185,5 @@ const styles = {
     }
 };
 
-// Expose styles to global scope for userscript use
-window.styles = { styles }; 
+// Initialize styles or use existing one to prevent duplication
+window.styles = window.styles || { styles }; 

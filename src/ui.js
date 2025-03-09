@@ -697,7 +697,7 @@ function createUI() {
 }
 
 // Expose UI functions to global scope for userscript use
-window.ui = {
+window.ui = window.ui || {
     createSettingInput,
     createSettingsPanel,
     createSizeButton,

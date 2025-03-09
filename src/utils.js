@@ -61,8 +61,8 @@ const makeDraggable = (element) => {
     element.addEventListener('mouseleave', dragEnd);
 };
 
-// Expose functions to global scope for userscript use
-window.utils = {
+// Initialize utils or use existing one to prevent duplication
+window.utils = window.utils || {
     normalRandom,
     applyStyles,
     makeDraggable
