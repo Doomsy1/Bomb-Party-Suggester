@@ -1,714 +1,675 @@
-/**
- * ui.js - UI components and functionality for Bomb Party Suggester
- */
+// ui.js
+window.BPS = window.BPS || {};
 
-; (function() {
-    // Only define UI if it doesn't already exist (prevents redeclaration)
-    if (!window.ui) {
-        // Get references to other modules via window
-        const { styles } = window.styles;
-        const { applyStyles, makeDraggable } = window.utils;
-        const { 
-            TYPER_CONFIG, 
-            loadSavedSettings, 
-            saveSettings, 
-            simulateTyping, 
-            isPlayerTurn 
-        } = window.typer;
-        const { 
-            dictionaries, 
-            currentDictionary, 
-            calculateRarityScore, 
-            findMatchingWords, 
-            sortMatches 
-        } = window.dictionaries;
+(function(){
+    const styles = window.BPS.styles;
+    const applyStyles = window.BPS.applyStyles;
+    const dictionaries = window.BPS.dictionaries;
+    const simulateTyping = window.BPS.simulateTyping;
+    const isPlayerTurn = window.BPS.isPlayerTurn;
+    const TYPER_CONFIG = window.BPS.TYPER_CONFIG;
+    const normalRandom = window.BPS.normalRandom;
+    const saveSettings = window.BPS.saveSettings;
+    const loadSavedSettings = window.BPS.loadSavedSettings;
 
-        // Define sort methods
-        const sortMethods = {
-            frequency: { label: 'Freq', title: 'Sort by frequency (most common first)' },
-            length: { label: 'Len', title: 'Sort by length (longest first)' },
-            rarity: { label: 'Rare', title: 'Sort by rare letters (rarest first)' }
-        };
+    // Current dictionary and sort config
+    let currentDictionary = '20k';
+    let currentSort = { method: 'frequency', direction: 'desc' };
 
-        // Store UI references
-        let panel, resultsDiv, buttons = {}, sortButtons = {};
+    // For the observer that watches the "syllable" element
+    let syllableObserver = null;
 
-        // Current sort state
-        let currentSort = {
-            method: 'frequency',
-            direction: 'desc'
-        };
+    // Letter frequency for 'rarity' sorting
+    const letterScores = {
+        'e': 1, 't': 2, 'a': 3, 'o': 4, 'i': 5, 'n': 6, 's': 7, 'h': 8, 'r': 9,
+        'd': 10, 'l': 11, 'u': 12, 'c': 13, 'm': 14, 'w': 15, 'f': 16, 'g': 17,
+        'y': 18, 'p': 19, 'b': 20, 'v': 21, 'k': 22, 'j': 23, 'x': 24, 'q': 25, 'z': 26
+    };
 
-        // Create a settings input with slider
-        const createSettingInput = (label, key, value, min = 0, max = 100, step = '1') => {
-            const group = document.createElement('div');
-            applyStyles(group, styles.settingsGroup);
+    function calculateRarityScore(word) {
+        return word.toLowerCase().split('').reduce((score, letter) => {
+            return score + (letterScores[letter] || 13);
+        }, 0);
+    }
 
-            const labelEl = document.createElement('label');
-            labelEl.textContent = label;
-            applyStyles(labelEl, styles.settingsLabel);
-            group.appendChild(labelEl);
+    // Sort matches in-place
+    function sortMatches(matches) {
+        let { method, direction } = currentSort;
 
-            const inputGroup = document.createElement('div');
-            applyStyles(inputGroup, styles.settingsInputGroup);
+        // If dictionary has no frequency data but method = frequency, default to length
+        if (method === 'frequency' && !dictionaries[currentDictionary].hasFrequency) {
+            method = 'length';
+        }
 
-            const slider = document.createElement('input');
-            slider.type = 'range';
-            slider.min = min;
-            slider.max = max;
-            slider.step = step;
-            slider.value = value;
-            applyStyles(slider, styles.settingsSlider);
+        const sortFn = {
+            frequency: (a, b) => b.freq - a.freq,
+            length: (a, b) => b.word.length - a.word.length,
+            rarity: (a, b) => calculateRarityScore(b.word) - calculateRarityScore(a.word)
+        }[method];
 
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.value = value;
-            input.step = step;
-            input.min = min;
-            input.max = max;
-            applyStyles(input, styles.settingsInput);
+        matches.sort(direction === 'desc' ? sortFn : (a, b) => -sortFn(a, b));
+        return matches;
+    }
 
-            const updateValue = (newValue) => {
-                const path = key.split('.');
-                let target = TYPER_CONFIG;
-                for (let i = 0; i < path.length - 1; i++) {
-                    target = target[path[i]];
+    // Syllable -> suggestion
+    function suggestWords(syllable) {
+        const resultsDiv = document.getElementById('bombPartyWordSuggesterResults');
+        if (!resultsDiv) return;
+
+        if (!syllable) {
+            resultsDiv.textContent = '(Waiting for syllable...)';
+            return;
+        }
+
+        const dictObj = dictionaries[currentDictionary];
+        if (!dictObj.words.length) {
+            resultsDiv.textContent = 'Dictionary not ready yet...';
+            return;
+        }
+
+        const lower = syllable.toLowerCase();
+        let matches = dictObj.words.filter(e => e.word.toLowerCase().includes(lower));
+        if (!matches.length) {
+            resultsDiv.textContent = 'No suggestions found.';
+            return;
+        }
+
+        sortMatches(matches);
+
+        const ul = document.createElement('ul');
+        applyStyles(ul, styles.resultsList);
+
+        // Only show top 15
+        matches.slice(0, 15).forEach(({ word }) => {
+            const li = document.createElement('li');
+            applyStyles(li, styles.resultsItem);
+
+            li.onmouseenter = () => {
+                if (isPlayerTurn()) {
+                    applyStyles(li, styles.resultsItemHover);
+                } else {
+                    applyStyles(li, styles.resultsItemDisabled);
                 }
-                target[path[path.length - 1]] = parseFloat(newValue);
-                slider.value = newValue;
-                input.value = newValue;
-                saveSettings(); // Save settings whenever a value changes
+            };
+            li.onmouseleave = () => {
+                applyStyles(li, { backgroundColor: 'transparent' });
+            };
+            li.onclick = () => {
+                if (isPlayerTurn()) {
+                    simulateTyping(word);
+                }
             };
 
-            slider.oninput = () => updateValue(slider.value);
-            input.onchange = () => updateValue(input.value);
+            // Highlight the syllable portion
+            const idx = word.toLowerCase().indexOf(lower);
+            if (idx >= 0) {
+                const before = word.slice(0, idx);
+                const match = word.slice(idx, idx + lower.length);
+                const after = word.slice(idx + lower.length);
 
-            inputGroup.appendChild(slider);
-            inputGroup.appendChild(input);
-            group.appendChild(inputGroup);
-            return group;
+                li.innerHTML = `${before}<span style="color:${styles.colors.highlight}">${match}</span>${after}`;
+            } else {
+                li.textContent = word;
+            }
+
+            ul.appendChild(li);
+        });
+
+        resultsDiv.innerHTML = '';
+        resultsDiv.appendChild(ul);
+    }
+
+    // Create the Typer Settings Panel
+    function createSettingsPanel() {
+        const panel = document.createElement('div');
+        panel.id = 'typerSettingsPanel';
+        applyStyles(panel, styles.settingsPanel);
+        panel.style.display = 'none'; // hidden by default
+
+        // Draggable
+        makeDraggable(panel);
+
+        // Header container
+        const header = document.createElement('div');
+        applyStyles(header, {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '10px'
+        });
+
+        const title = document.createElement('h3');
+        title.textContent = 'Typer Settings';
+        title.style.margin = '0';
+        title.style.color = '#61dafb';
+        title.style.fontSize = '14px';
+        header.appendChild(title);
+
+        // Reset button
+        const resetBtn = document.createElement('button');
+        resetBtn.textContent = '↺';
+        resetBtn.title = 'Reset to defaults';
+        applyStyles(resetBtn, {
+            ...styles.button,
+            padding: '2px 6px',
+            fontSize: '14px',
+            marginLeft: '8px',
+            backgroundColor: 'transparent'
+        });
+        resetBtn.onmouseenter = () => { resetBtn.style.backgroundColor = 'rgba(97, 218, 251, 0.2)'; };
+        resetBtn.onmouseleave = () => { resetBtn.style.backgroundColor = 'transparent'; };
+
+        resetBtn.onclick = () => {
+            const defaults = {
+                baseDelay: 60,
+                distanceMultiplier: 12.5,
+                minDelay: 15,
+                delayVariation: 0.2,
+                typoChance: 2,
+                typoNoticeDelay: { mean: 250, stdDev: 60 },
+                typoBackspaceDelay: { mean: 100, stdDev: 40 },
+                typoRecoveryDelay: { mean: 200, stdDev: 50 }
+            };
+            Object.assign(TYPER_CONFIG, JSON.parse(JSON.stringify(defaults)));
+            saveSettings();
+            // Refresh panel UI
+            refreshSettingsPanel(panel);
+            console.log("[BombPartySuggester] Settings reset to defaults.");
         };
 
-        // Create settings panel
-        const createSettingsPanel = () => {
-            const panel = document.createElement('div');
-            panel.id = 'typerSettingsPanel';
-            applyStyles(panel, styles.settingsPanel);
-            panel.style.display = 'none';
+        header.appendChild(resetBtn);
+        panel.appendChild(header);
 
-            // Create header container
-            const headerContainer = document.createElement('div');
-            applyStyles(headerContainer, {
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '10px'
-            });
+        // Add inputs
+        panel.appendChild(
+            createSettingInput('Base Delay (ms)', 'baseDelay', TYPER_CONFIG.baseDelay, 0, 100, 1)
+        );
+        panel.appendChild(
+            createSettingInput('Distance Multiplier', 'distanceMultiplier', TYPER_CONFIG.distanceMultiplier, 0, 20, 0.1)
+        );
+        panel.appendChild(
+            createSettingInput('Minimum Delay (ms)', 'minDelay', TYPER_CONFIG.minDelay, 0, 50, 1)
+        );
+        panel.appendChild(
+            createSettingInput('Delay Variation', 'delayVariation', TYPER_CONFIG.delayVariation, 0, 1, 0.01)
+        );
+        panel.appendChild(
+            createSettingInput('Typo Chance (%)', 'typoChance', TYPER_CONFIG.typoChance, 0, 10, 0.1)
+        );
+        panel.appendChild(
+            createSettingInput('Notice Delay (ms)', 'typoNoticeDelay.mean', TYPER_CONFIG.typoNoticeDelay.mean, 0, 1000, 10)
+        );
+        panel.appendChild(
+            createSettingInput('Notice Variation', 'typoNoticeDelay.stdDev', TYPER_CONFIG.typoNoticeDelay.stdDev, 0, 200, 5)
+        );
+        panel.appendChild(
+            createSettingInput('Backspace Delay (ms)', 'typoBackspaceDelay.mean', TYPER_CONFIG.typoBackspaceDelay.mean, 0, 500, 10)
+        );
+        panel.appendChild(
+            createSettingInput('Backspace Variation', 'typoBackspaceDelay.stdDev', TYPER_CONFIG.typoBackspaceDelay.stdDev, 0, 100, 5)
+        );
+        panel.appendChild(
+            createSettingInput('Recovery Delay (ms)', 'typoRecoveryDelay.mean', TYPER_CONFIG.typoRecoveryDelay.mean, 0, 500, 10)
+        );
+        panel.appendChild(
+            createSettingInput('Recovery Variation', 'typoRecoveryDelay.stdDev', TYPER_CONFIG.typoRecoveryDelay.stdDev, 0, 100, 5)
+        );
 
-            const title = document.createElement('h3');
-            title.textContent = 'Typer Settings';
-            title.style.margin = '0';
-            title.style.color = '#61dafb';
-            title.style.fontSize = '14px';
-            headerContainer.appendChild(title);
+        document.body.appendChild(panel);
+        return panel;
+    }
 
-            // Add reset button to header
-            const resetButton = document.createElement('button');
-            resetButton.textContent = '↺';
-            resetButton.title = 'Reset to defaults';
-            applyStyles(resetButton, {
-                ...styles.button,
-                padding: '2px 6px',
-                fontSize: '14px',
-                marginLeft: '8px',
-                backgroundColor: 'transparent'
-            });
+    // Helper to create a labeled slider + number input
+    function createSettingInput(labelText, configPath, initialValue, min, max, step) {
+        const group = document.createElement('div');
+        group.className = 'settingsGroup';
+        applyStyles(group, styles.settingsGroup);
 
-            resetButton.onmouseenter = () => {
-                resetButton.style.backgroundColor = 'rgba(97, 218, 251, 0.2)';
-            };
+        const labelEl = document.createElement('label');
+        labelEl.textContent = labelText;
+        applyStyles(labelEl, styles.settingsLabel);
+        group.appendChild(labelEl);
 
-            resetButton.onmouseleave = () => {
-                resetButton.style.backgroundColor = 'transparent';
-            };
+        const inputGroup = document.createElement('div');
+        applyStyles(inputGroup, styles.settingsInputGroup);
 
-            resetButton.onclick = () => {
-                // Define the default configuration
-                const defaultConfig = {
-                    baseDelay: 60,
-                    distanceMultiplier: 12.5,
-                    minDelay: 15,
-                    delayVariation: 0.2,
-                    typoChance: 2,
-                    typoNoticeDelay: { mean: 250, stdDev: 60 },
-                    typoBackspaceDelay: { mean: 100, stdDev: 40 },
-                    typoRecoveryDelay: { mean: 200, stdDev: 50 }
-                };
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = min;
+        slider.max = max;
+        slider.step = step;
+        slider.value = initialValue;
+        applyStyles(slider, styles.settingsSlider);
 
-                // Create a fresh TYPER_CONFIG object
-                Object.assign(TYPER_CONFIG, JSON.parse(JSON.stringify(defaultConfig)));
+        const numericInput = document.createElement('input');
+        numericInput.type = 'number';
+        numericInput.value = initialValue;
+        numericInput.min = min;
+        numericInput.max = max;
+        numericInput.step = step;
+        applyStyles(numericInput, styles.settingsInput);
 
-                // Get all input groups
-                const inputGroups = panel.querySelectorAll('.settingsGroup');
+        const updateValue = (val) => {
+            // Drill into TYPER_CONFIG using configPath like "typoNoticeDelay.mean"
+            const keys = configPath.split('.');
+            let target = TYPER_CONFIG;
+            for (let i = 0; i < keys.length - 1; i++) {
+                target = target[keys[i]];
+            }
+            target[keys[keys.length - 1]] = parseFloat(val);
 
-                // Map of labels to config paths
-                const labelToConfigPath = {
-                    'Base Delay (ms)': ['baseDelay'],
-                    'Distance Multiplier': ['distanceMultiplier'],
-                    'Minimum Delay (ms)': ['minDelay'],
-                    'Delay Variation': ['delayVariation'],
-                    'Typo Chance (%)': ['typoChance'],
-                    'Notice Delay (ms)': ['typoNoticeDelay', 'mean'],
-                    'Notice Variation': ['typoNoticeDelay', 'stdDev'],
-                    'Backspace Delay (ms)': ['typoBackspaceDelay', 'mean'],
-                    'Backspace Variation': ['typoBackspaceDelay', 'stdDev'],
-                    'Recovery Delay (ms)': ['typoRecoveryDelay', 'mean'],
-                    'Recovery Variation': ['typoRecoveryDelay', 'stdDev']
-                };
-
-                // Update each input group
-                inputGroups.forEach(group => {
-                    const label = group.querySelector('label').textContent;
-                    const slider = group.querySelector('input[type="range"]');
-                    const input = group.querySelector('input[type="number"]');
-
-                    // Get the config path for this label
-                    const configPath = labelToConfigPath[label];
-                    if (!configPath) return;
-
-                    // Get the value from the default config
-                    let value = defaultConfig;
-                    for (const key of configPath) {
-                        value = value[key];
-                    }
-
-                    // Update the inputs
-                    if (typeof value === 'number') {
-                        slider.value = value;
-                        input.value = value;
-
-                        // Trigger events
-                        const event = new Event('input', { bubbles: true });
-                        slider.dispatchEvent(event);
-                        input.dispatchEvent(event);
-                    }
-                });
-
-                // Save to localStorage
-                saveSettings();
-
-                console.log("[BombPartySuggester] Settings reset to defaults:", TYPER_CONFIG);
-            };
-
-            headerContainer.appendChild(resetButton);
-            panel.appendChild(headerContainer);
-
-            // Add typing settings
-            panel.appendChild(createSettingInput('Base Delay (ms)', 'baseDelay', TYPER_CONFIG.baseDelay, 10, 200, '5'));
-            panel.appendChild(createSettingInput('Distance Multiplier', 'distanceMultiplier', TYPER_CONFIG.distanceMultiplier, 0, 50, '0.5'));
-            panel.appendChild(createSettingInput('Minimum Delay (ms)', 'minDelay', TYPER_CONFIG.minDelay, 0, 100, '5'));
-            panel.appendChild(createSettingInput('Delay Variation', 'delayVariation', TYPER_CONFIG.delayVariation, 0, 0.5, '0.05'));
-            panel.appendChild(createSettingInput('Typo Chance (%)', 'typoChance', TYPER_CONFIG.typoChance, 0, 20, '0.5'));
-            
-            // Add typo timing settings
-            panel.appendChild(createSettingInput('Notice Delay (ms)', 'typoNoticeDelay.mean', TYPER_CONFIG.typoNoticeDelay.mean, 50, 1000, '10'));
-            panel.appendChild(createSettingInput('Notice Variation', 'typoNoticeDelay.stdDev', TYPER_CONFIG.typoNoticeDelay.stdDev, 0, 200, '5'));
-            panel.appendChild(createSettingInput('Backspace Delay (ms)', 'typoBackspaceDelay.mean', TYPER_CONFIG.typoBackspaceDelay.mean, 50, 500, '10'));
-            panel.appendChild(createSettingInput('Backspace Variation', 'typoBackspaceDelay.stdDev', TYPER_CONFIG.typoBackspaceDelay.stdDev, 0, 200, '5'));
-            panel.appendChild(createSettingInput('Recovery Delay (ms)', 'typoRecoveryDelay.mean', TYPER_CONFIG.typoRecoveryDelay.mean, 50, 500, '10'));
-            panel.appendChild(createSettingInput('Recovery Variation', 'typoRecoveryDelay.stdDev', TYPER_CONFIG.typoRecoveryDelay.stdDev, 0, 200, '5'));
-
-            // Make panel draggable
-            makeDraggable(panel);
-
-            return panel;
+            slider.value = val;
+            numericInput.value = val;
+            saveSettings();
         };
 
-        // Create a dictionary size button
-        const createSizeButton = (size) => {
+        slider.addEventListener('input', () => updateValue(slider.value));
+        numericInput.addEventListener('change', () => updateValue(numericInput.value));
+
+        inputGroup.appendChild(slider);
+        inputGroup.appendChild(numericInput);
+        group.appendChild(inputGroup);
+        return group;
+    }
+
+    // Refresh all sliders/inputs to match TYPER_CONFIG (useful after reset)
+    function refreshSettingsPanel(panel) {
+        const groups = panel.querySelectorAll('.settingsGroup');
+        groups.forEach(group => {
+            const label = group.querySelector('label').textContent;
+            const slider = group.querySelector('input[type="range"]');
+            const numericInput = group.querySelector('input[type="number"]');
+
+            // Mapping from label -> config path
+            const labelToPath = {
+                'Base Delay (ms)': 'baseDelay',
+                'Distance Multiplier': 'distanceMultiplier',
+                'Minimum Delay (ms)': 'minDelay',
+                'Delay Variation': 'delayVariation',
+                'Typo Chance (%)': 'typoChance',
+                'Notice Delay (ms)': 'typoNoticeDelay.mean',
+                'Notice Variation': 'typoNoticeDelay.stdDev',
+                'Backspace Delay (ms)': 'typoBackspaceDelay.mean',
+                'Backspace Variation': 'typoBackspaceDelay.stdDev',
+                'Recovery Delay (ms)': 'typoRecoveryDelay.mean',
+                'Recovery Variation': 'typoRecoveryDelay.stdDev'
+            };
+            const path = labelToPath[label];
+            if (!path) return;
+
+            const parts = path.split('.');
+            let val = TYPER_CONFIG;
+            for (const p of parts) {
+                val = val[p];
+            }
+            slider.value = val;
+            numericInput.value = val;
+        });
+    }
+
+    // Basic draggable for panels
+    function makeDraggable(element) {
+        let isDragging = false, offsetX, offsetY;
+
+        element.addEventListener('mousedown', (e) => {
+            if (e.target.tagName.toLowerCase() === 'button' ||
+                e.target.tagName.toLowerCase() === 'input') {
+                return; // don't drag if clicking button/input
+            }
+            isDragging = true;
+            offsetX = e.clientX - element.offsetLeft;
+            offsetY = e.clientY - element.offsetTop;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                const x = e.clientX - offsetX;
+                const y = e.clientY - offsetY;
+                element.style.left = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, x)) + 'px';
+                element.style.top = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, y)) + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+    }
+
+    // Create the main “word suggester” panel with resizing, dictionary buttons, etc.
+    function createUI() {
+        const panel = document.createElement('div');
+        panel.id = 'bombPartyWordSuggesterPanel';
+        applyStyles(panel, styles.panel);
+
+        // Make it draggable/resizable
+        setupDraggableResize(panel);
+
+        // Content container
+        const content = document.createElement('div');
+        content.id = 'bombPartyWordSuggesterContent';
+        panel.appendChild(content);
+
+        // Dictionary size selector
+        const sizeSelector = document.createElement('div');
+        applyStyles(sizeSelector, styles.sizeSelector);
+
+        ['5k','20k','170k'].forEach(dictSize => {
             const btn = document.createElement('button');
-            btn.textContent = `${size}`;
+            btn.textContent = dictSize;
             applyStyles(btn, styles.button);
 
             btn.onclick = () => {
-                if (!dictionaries[size].words.length) return; // don't switch if not loaded
+                // Only switch if dictionary is loaded
+                if (!dictionaries[dictSize].words.length) return;
 
-                // Update dictionary and buttons
-                window.dictionaries.currentDictionary = size;
-
-                // Reset all dictionary buttons first
-                Object.values(buttons).forEach(button => {
-                    applyStyles(button, styles.button);
+                currentDictionary = dictSize;
+                // Reset UI
+                [...sizeSelector.querySelectorAll('button')].forEach(b => {
+                    applyStyles(b, styles.button);
                 });
-
-                // Set only the clicked button as active
                 applyStyles(btn, {...styles.button, ...styles.activeButton});
 
-                // Update sort buttons visibility based on dictionary frequency support
-                const freqButton = sortButtons.frequency;
-                if (dictionaries[size].hasFrequency) {
-                    freqButton.disabled = false;
-                    freqButton.style.backgroundColor = 'transparent';
-                    freqButton.style.cursor = 'pointer';
-                    freqButton.title = '';
-                } else {
-                    freqButton.disabled = true;
-                    freqButton.style.backgroundColor = 'rgba(220, 53, 69, 0.2)';
-                    freqButton.style.cursor = 'not-allowed';
-                    freqButton.title = 'Frequency sorting not available for 170k dictionary';
-                    if (currentSort.method === 'frequency') {
-                        // Reset all sort buttons
-                        Object.values(sortButtons).forEach(sortBtn => {
-                            applyStyles(sortBtn, styles.sortButton);
-                            sortBtn.textContent = sortBtn.textContent.replace(/[↑↓]/, '↑');
-                        });
-
-                        // Set length as active
-                        applyStyles(sortButtons.length, {...styles.sortButton, ...styles.activeSortButton});
-                        sortButtons.length.textContent = 'Len ↓';
-                        currentSort.method = 'length';
-                        currentSort.direction = 'desc';
-                    }
+                // If frequency sort is chosen but dictionary lacks freq data, revert to length
+                if (currentSort.method === 'frequency' && !dictionaries[dictSize].hasFrequency) {
+                    currentSort.method = 'length';
+                    currentSort.direction = 'desc';
                 }
 
-                // Update suggestions with new dictionary
-                const syllableElement = document.querySelector('.syllable');
-                if (syllableElement) {
-                    suggestWords(syllableElement.textContent.trim());
-                }
+                // Update the syllable if we already have one
+                const sEl = document.querySelector('.syllable');
+                if (sEl) suggestWords(sEl.textContent.trim());
             };
 
-            // Prevent dragging when interacting with buttons
-            btn.onmousedown = (e) => {
-                e.stopPropagation();
-            };
+            // Prevent dragging when clicking the button
+            btn.onmousedown = (e) => { e.stopPropagation(); };
+            sizeSelector.appendChild(btn);
+        });
+        content.appendChild(sizeSelector);
 
-            return btn;
+        // Sort controls
+        const sortControls = document.createElement('div');
+        applyStyles(sortControls, styles.sortControls);
+        const sortDefs = {
+            frequency: 'Freq',
+            length: 'Len',
+            rarity: 'Rare'
         };
 
-        // Update sort state and UI
-        function updateSort(method, direction) {
-            // If the current dictionary doesn't have frequency data and method is frequency,
-            // switch to length sort
-            if (method === 'frequency' && !dictionaries[currentDictionary].hasFrequency) {
-                console.log("[BombPartySuggester] Switching from frequency to length sort (no frequency data available)");
-                method = 'length';
-            }
+        Object.entries(sortDefs).forEach(([method, label]) => {
+            const btn = document.createElement('button');
+            btn.textContent = label + ' ↑';
+            applyStyles(btn, styles.sortButton);
 
-            // Update sort state
-            currentSort.method = method;
-            currentSort.direction = direction;
+            let isAscending = true;
 
-            // Update sort button UI
-            Object.entries(sortButtons).forEach(([buttonMethod, button]) => {
-                // Always ensure frequency button is hidden for 170k dictionary
-                if (buttonMethod === 'frequency' && !dictionaries[currentDictionary].hasFrequency) {
-                    button.style.display = 'none';
-                }
+            btn.onclick = () => {
+                // If dictionary doesn't have freq but user clicked freq, skip
+                if (method === 'frequency' && !dictionaries[currentDictionary].hasFrequency) return;
 
-                // Update button styles and arrows
-                if (buttonMethod === method) {
-                    applyStyles(button, {...styles.sortButton, ...styles.activeSortButton});
-                    button.textContent = `${sortMethods[buttonMethod].label} ${direction === 'desc' ? '↓' : '↑'}`;
+                // Toggle direction if same method
+                if (currentSort.method === method) {
+                    isAscending = !isAscending;
                 } else {
-                    applyStyles(button, styles.sortButton);
-                    button.textContent = `${sortMethods[buttonMethod].label} ↑`;
+                    isAscending = true;
                 }
-            });
+                currentSort.method = method;
+                currentSort.direction = isAscending ? 'desc' : 'asc';
 
-            // Re-sort current results
-            const syllableElement = document.querySelector('.syllable');
-            if (syllableElement) {
-                suggestWords(syllableElement.textContent.trim());
-            }
-        }
+                // Update all sort buttons
+                [...sortControls.querySelectorAll('button')].forEach(b => {
+                    applyStyles(b, styles.sortButton);
+                    // Reset arrow to ↑
+                    const txt = b.textContent.replace(/[↑↓]/, '↑');
+                    b.textContent = txt;
+                });
 
-        // Setup draggable functionality for panel
-        const setupDraggable = (panel) => {
-            let isDragging = false;
-            let isResizing = false;
-            let offsetX = 0;
-            let offsetY = 0;
-            let currentResizer = null;
-            let startWidth = 0;
-            let startHeight = 0;
-            let startX = 0;
-            let startY = 0;
-            let startLeft = 0;
-            let startTop = 0;
+                // Mark this one as active
+                applyStyles(btn, {...styles.sortButton, ...styles.activeSortButton});
+                btn.textContent = `${label} ${isAscending ? '↓':'↑'}`;
 
-            const maxWidth = parseInt(styles.panel.maxWidth);
-            const minWidth = parseInt(styles.panel.minWidth);
-            const minHeight = parseInt(styles.panel.minHeight);
-            const maxHeight = parseInt(styles.panel.maxHeight);
-
-            function constrainDimensions(width, height) {
-                return {
-                    width: Math.min(maxWidth, Math.max(minWidth, width)),
-                    height: Math.min(maxHeight, Math.max(minHeight, height))
-                };
-            }
-
-            // Handle mouse down for dragging
-            panel.onmousedown = function(e) {
-                if (e.target.classList?.contains('resize-handle') || e.target.classList?.contains('resize-edge')) {
-                    return;
-                }
-                isDragging = true;
-                offsetX = e.clientX - panel.getBoundingClientRect().left;
-                offsetY = e.clientY - panel.getBoundingClientRect().top;
-                e.preventDefault();
+                // Re-suggest
+                const sEl = document.querySelector('.syllable');
+                if (sEl) suggestWords(sEl.textContent.trim());
             };
 
-            // Handle resize start for both corners and edges
-            const resizers = [...panel.querySelectorAll('.resize-handle'), ...panel.querySelectorAll('.resize-edge')];
-            resizers.forEach(resizer => {
-                resizer.onmousedown = function(e) {
-                    isResizing = true;
-                    currentResizer = resizer;
-                    const rect = panel.getBoundingClientRect();
-                    startWidth = rect.width;
-                    startHeight = rect.height;
-                    startX = e.clientX;
-                    startY = e.clientY;
-                    startLeft = rect.left;
-                    startTop = rect.top;
-                    e.preventDefault();
-                    e.stopPropagation();
-                };
-            });
+            // Prevent drag
+            btn.onmousedown = (e) => { e.stopPropagation(); };
 
-            document.addEventListener('mousemove', function(e) {
-                if (isDragging) {
-                    const x = e.clientX - offsetX;
-                    const y = e.clientY - offsetY;
-                    
-                    // Keep panel within viewport bounds
-                    const boundedX = Math.min(Math.max(0, x), window.innerWidth - panel.offsetWidth);
-                    const boundedY = Math.min(Math.max(0, y), window.innerHeight - panel.offsetHeight);
-                    
-                    panel.style.left = boundedX + 'px';
-                    panel.style.top = boundedY + 'px';
-                } else if (isResizing && currentResizer) {
-                    e.preventDefault();
-                    // Calculate new dimensions based on which handle/edge is being dragged
-                    let newWidth, newHeight, newLeft, newTop;
-                    
-                    // Handle corner and edge resizing logic here
-                    if (currentResizer.classList.contains('resize-se')) {
-                        // Southeast (bottom-right) corner
-                        newWidth = startWidth + (e.clientX - startX);
-                        newHeight = startHeight + (e.clientY - startY);
-                        newLeft = startLeft;
-                        newTop = startTop;
-                    } else if (currentResizer.classList.contains('resize-sw')) {
-                        // Southwest (bottom-left) corner
-                        newWidth = startWidth - (e.clientX - startX);
-                        newHeight = startHeight + (e.clientY - startY);
-                        newLeft = startLeft + startWidth - newWidth;
-                        newTop = startTop;
-                    } else if (currentResizer.classList.contains('resize-ne')) {
-                        // Northeast (top-right) corner
-                        newWidth = startWidth + (e.clientX - startX);
-                        newHeight = startHeight - (e.clientY - startY);
-                        newLeft = startLeft;
-                        newTop = startTop + startHeight - newHeight;
-                    } else if (currentResizer.classList.contains('resize-nw')) {
-                        // Northwest (top-left) corner
-                        newWidth = startWidth - (e.clientX - startX);
-                        newHeight = startHeight - (e.clientY - startY);
-                        newLeft = startLeft + startWidth - newWidth;
-                        newTop = startTop + startHeight - newHeight;
-                    }
-                    
-                    // Constrain dimensions
-                    const constrained = constrainDimensions(newWidth, newHeight);
-                    
-                    // Apply constrained dimensions and position
-                    panel.style.width = constrained.width + 'px';
-                    panel.style.height = constrained.height + 'px';
-                    
-                    if (newLeft !== undefined) panel.style.left = newLeft + 'px';
-                    if (newTop !== undefined) panel.style.top = newTop + 'px';
-                    
-                    // Update results display to fit new dimensions
-                    if (resultsDiv) {
-                        resultsDiv.style.height = (constrained.height - 130) + 'px';
-                        resultsDiv.style.maxHeight = (constrained.height - 130) + 'px';
-                    }
-                }
-            });
+            sortControls.appendChild(btn);
+        });
+        content.appendChild(sortControls);
 
-            document.addEventListener('mouseup', function() {
-                isDragging = false;
-                isResizing = false;
-                currentResizer = null;
-            });
+        // Results container
+        const resultsDiv = document.createElement('div');
+        resultsDiv.id = 'bombPartyWordSuggesterResults';
+        applyStyles(resultsDiv, styles.resultsDiv);
+        resultsDiv.textContent = '(Waiting for syllable...)';
+        content.appendChild(resultsDiv);
+
+        // Settings panel
+        const settingsPanel = createSettingsPanel();
+
+        // Settings button
+        const settingsButton = document.createElement('button');
+        settingsButton.textContent = '⚙️';
+        applyStyles(settingsButton, styles.settingsButton);
+        settingsButton.onclick = () => {
+            settingsPanel.style.display = (settingsPanel.style.display === 'none') ? 'block' : 'none';
         };
+        // Prevent drag
+        settingsButton.onmousedown = (e) => { e.stopPropagation(); };
+        panel.appendChild(settingsButton);
 
-        // Suggest words based on syllable
-        function suggestWords(syllable) {
-            if (!resultsDiv) return;
+        document.body.appendChild(panel);
 
-            // Clear previous results
-            resultsDiv.innerHTML = '';
-            
-            if (!syllable) {
-                resultsDiv.textContent = 'Waiting for syllable...';
-                return;
-            }
-
-            // Find matching words
-            let matches = findMatchingWords(syllable, window.dictionaries.currentDictionary);
-
-            if (matches.length === 0) {
-                resultsDiv.textContent = 'No matches found';
-                return;
-            }
-
-            // Sort matches according to current settings
-            matches = sortMatches(matches, currentSort.method, currentSort.direction);
-
-            // Create list of matches
-            const list = document.createElement('ul');
-            applyStyles(list, styles.resultsList);
-
-            // Add words to the list
-            matches.slice(0, 100).forEach(match => {
-                const wordStr = typeof match === 'object' ? match.word : match;
-                const li = document.createElement('li');
-                applyStyles(li, styles.resultsItem);
-
-                // Color the matching syllable
-                const syllableIndex = wordStr.toLowerCase().indexOf(syllable.toLowerCase());
-                const syllableEnd = syllableIndex + syllable.length;
-                let html = '';
-                if (syllableIndex !== -1) {
-                    html += wordStr.substring(0, syllableIndex);
-                    html += `<span style="color: ${styles.colors.highlight}">${wordStr.substring(syllableIndex, syllableEnd)}</span>`;
-                    html += wordStr.substring(syllableEnd);
-                } else {
-                    html = wordStr;
-                }
-
-                // Add frequency info if available
-                if (typeof match === 'object' && match.freq) {
-                    html += ` <small style="color: #888">(${match.freq})</small>`;
-                }
-
-                li.innerHTML = html;
-
-                // Add click behavior to type word
-                li.onclick = () => {
-                    if (isPlayerTurn()) {
-                        simulateTyping(wordStr);
-                    }
-                };
-
-                // Hover effects
-                li.onmouseenter = () => {
-                    applyStyles(li, styles.resultsItemHover);
-                };
-                li.onmouseleave = () => {
-                    li.style.backgroundColor = '';
-                };
-
-                list.appendChild(li);
-            });
-
-            resultsDiv.appendChild(list);
+        // Mark default dictionary 20k as active
+        const defaultButton = sizeSelector.querySelector('button:nth-child(2)'); 
+        if (defaultButton) {
+            applyStyles(defaultButton, {...styles.button, ...styles.activeButton});
         }
 
-        // Setup observer to watch for syllable changes
-        function setupSyllableObserver() {
-            // Find the game container where the syllable will appear
-            const gameContainer = document.getElementById('game') || document.querySelector('.game');
-            if (!gameContainer) {
-                console.error("[BombPartySuggester] Game container not found, retrying in 2 seconds");
-                setTimeout(setupSyllableObserver, 2000);
-                return;
-            }
-
-            // Function to observe syllable changes
-            function observeSyllable() {
-                const syllableElement = document.querySelector('.syllable');
-                if (syllableElement) {
-                    const syllable = syllableElement.textContent.trim();
-                    suggestWords(syllable);
-                }
-            }
-
-            // Set up a MutationObserver to watch for changes
-            const observer = new MutationObserver(mutations => {
-                for (const mutation of mutations) {
-                    // Check if the syllable element was added or changed
-                    if (mutation.type === 'childList' || mutation.type === 'characterData') {
-                        observeSyllable();
-                    }
-                }
-            });
-
-            // Start observing
-            observer.observe(gameContainer, {
-                childList: true,
-                subtree: true,
-                characterData: true
-            });
-
-            // Initial check for existing syllable
-            observeSyllable();
-            
-            console.log("[BombPartySuggester] Syllable observer started");
+        // Mark default sort = frequency descending
+        const freqBtn = sortControls.querySelector('button:first-child');
+        if (freqBtn) {
+            applyStyles(freqBtn, {...styles.sortButton, ...styles.activeSortButton});
+            freqBtn.textContent = 'Freq ↓';
         }
-
-        // Create the main UI
-        function createUI() {
-            console.log("[BombPartySuggester] Creating UI");
-            
-            // Create main panel
-            panel = document.createElement('div');
-            panel.id = 'bombPartySuggesterPanel';
-            applyStyles(panel, styles.panel);
-
-            // Add dictionary size selector
-            const sizeSelector = document.createElement('div');
-            applyStyles(sizeSelector, styles.sizeSelector);
-
-            // Create dictionary size buttons
-            buttons['5k'] = createSizeButton('5k');
-            buttons['20k'] = createSizeButton('20k');
-            buttons['170k'] = createSizeButton('170k');
-
-            // Default to 5k dictionary as active
-            applyStyles(buttons['5k'], {...styles.button, ...styles.activeButton});
-
-            // Add dictionary buttons to selector
-            sizeSelector.appendChild(buttons['5k']);
-            sizeSelector.appendChild(buttons['20k']);
-            sizeSelector.appendChild(buttons['170k']);
-            panel.appendChild(sizeSelector);
-
-            // Add sort controls
-            const sortControls = document.createElement('div');
-            applyStyles(sortControls, styles.sortControls);
-
-            // Create sort buttons
-            Object.entries(sortMethods).forEach(([method, details]) => {
-                const btn = document.createElement('button');
-                btn.textContent = `${details.label} ${method === 'frequency' ? '↓' : '↑'}`;
-                btn.title = details.title;
-                applyStyles(btn, method === 'frequency' ? 
-                    {...styles.sortButton, ...styles.activeSortButton} : 
-                    styles.sortButton);
-
-                // Set up click handler for sort direction toggle
-                btn.onclick = () => {
-                    if (method === 'frequency' && !dictionaries[currentDictionary].hasFrequency) {
-                        return; // Don't allow frequency sort for dictionaries without frequency
-                    }
-
-                    if (currentSort.method === method) {
-                        // Toggle direction
-                        updateSort(method, currentSort.direction === 'desc' ? 'asc' : 'desc');
-                    } else {
-                        // Change method, default to descending
-                        updateSort(method, 'desc');
-                    }
-                };
-
-                // Disable frequency sort for 170k dictionary which has no frequency data
-                if (method === 'frequency' && !dictionaries[currentDictionary].hasFrequency) {
-                    btn.disabled = true;
-                    btn.style.backgroundColor = 'rgba(220, 53, 69, 0.2)';
-                    btn.style.cursor = 'not-allowed';
-                    btn.title = 'Frequency sorting not available for 170k dictionary';
-                }
-
-                // Store reference and add to controls
-                sortButtons[method] = btn;
-                sortControls.appendChild(btn);
-            });
-
-            panel.appendChild(sortControls);
-
-            // Create and add settings button
-            const settingsButton = document.createElement('button');
-            settingsButton.textContent = '⚙';
-            settingsButton.title = 'Typer Settings';
-            applyStyles(settingsButton, styles.settingsButton);
-
-            // Toggle settings panel visibility
-            settingsButton.onclick = () => {
-                const settingsPanel = document.getElementById('typerSettingsPanel');
-                if (settingsPanel) {
-                    settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
-                }
-            };
-
-            panel.appendChild(settingsButton);
-
-            // Create results container
-            resultsDiv = document.createElement('div');
-            resultsDiv.id = 'suggesterResults';
-            applyStyles(resultsDiv, {
-                ...styles.resultsDiv,
-                height: 'calc(100% - 130px)',
-                overflowY: 'auto',
-                padding: '10px',
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                borderRadius: '4px'
-            });
-            resultsDiv.innerHTML = 'Waiting for syllable...';
-            panel.appendChild(resultsDiv);
-
-            // Create settings panel
-            const settingsPanel = createSettingsPanel();
-            document.body.appendChild(settingsPanel);
-
-            // Add resize handles
-            const resizeSE = document.createElement('div');
-            resizeSE.className = 'resize-handle resize-se';
-            applyStyles(resizeSE, {
-                ...styles.resizeHandle,
-                bottom: '0',
-                right: '0',
-                cursor: 'se-resize'
-            });
-
-            // Add resize dot to handle
-            const resizeDotSE = document.createElement('div');
-            resizeDotSE.className = 'resize-dot';
-            applyStyles(resizeDotSE, styles.resizeDot);
-            resizeSE.appendChild(resizeDotSE);
-            panel.appendChild(resizeSE);
-
-            // Set up draggable and resizable functionality
-            setupDraggable(panel);
-
-            // Add panel to body
-            document.body.appendChild(panel);
-
-            // Initialize with first load
-            if (dictionaries[currentDictionary].words.length > 0) {
-                const syllableElement = document.querySelector('.syllable');
-                if (syllableElement) {
-                    suggestWords(syllableElement.textContent.trim());
-                }
-            }
-            
-            console.log("[BombPartySuggester] UI initialized");
-        }
-
-        // Expose UI functions to global scope for userscript use
-        window.ui = {
-            createSettingInput,
-            createSettingsPanel,
-            createSizeButton,
-            updateSort,
-            setupDraggable,
-            suggestWords,
-            setupSyllableObserver,
-            createUI
-        };
     }
-})(); 
+
+    // Sets up draggable + resizable corners
+    function setupDraggableResize(panel) {
+        // Add corner handles & edges
+        const cornerPositions = [
+            { corner: 'nw', top: '-10px', left: '-10px', cursor: 'nw-resize' },
+            { corner: 'ne', top: '-10px', right: '-10px', cursor: 'ne-resize' },
+            { corner: 'se', bottom: '-10px', right: '-10px', cursor: 'se-resize' },
+            { corner: 'sw', bottom: '-10px', left: '-10px', cursor: 'sw-resize' }
+        ];
+        cornerPositions.forEach(pos => {
+            const handle = document.createElement('div');
+            handle.className = `resize-handle ${pos.corner}`;
+            applyStyles(handle, { ...styles.resizeHandle, ...pos });
+            const dot = document.createElement('div');
+            applyStyles(dot, styles.resizeDot);
+            handle.appendChild(dot);
+            panel.appendChild(handle);
+        });
+
+        const edgePositions = [
+            { edge: 'n', top: '-5px', left: '20px', right: '20px', height: '10px', cursor: 'ns-resize' },
+            { edge: 's', bottom: '-5px', left: '20px', right: '20px', height: '10px', cursor: 'ns-resize' },
+            { edge: 'e', top: '20px', right: '-5px', bottom: '20px', width: '10px', cursor: 'ew-resize' },
+            { edge: 'w', top: '20px', left: '-5px', bottom: '20px', width: '10px', cursor: 'ew-resize' }
+        ];
+        edgePositions.forEach(pos => {
+            const edge = document.createElement('div');
+            edge.className = `resize-edge ${pos.edge}`;
+            applyStyles(edge, { ...styles.resizeEdge, ...pos });
+            panel.appendChild(edge);
+        });
+
+        // Draggable
+        let isDragging = false;
+        let startX = 0, startY = 0, offsetX = 0, offsetY = 0;
+
+        panel.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('resize-handle') ||
+                e.target.classList.contains('resize-edge')) {
+                return; 
+            }
+            isDragging = true;
+            offsetX = e.clientX - panel.getBoundingClientRect().left;
+            offsetY = e.clientY - panel.getBoundingClientRect().top;
+            e.preventDefault();
+        });
+
+        panel.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const newLeft = e.clientX - offsetX;
+            const newTop = e.clientY - offsetY;
+            panel.style.left = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, newLeft)) + 'px';
+            panel.style.top = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, newTop)) + 'px';
+        });
+
+        panel.addEventListener('mouseup', () => { isDragging = false; });
+        panel.addEventListener('mouseleave', () => { isDragging = false; });
+
+        // Resizable
+        let isResizing = false;
+        let currentResizer = null;
+        let startWidth, startHeight, panelLeft, panelTop;
+
+        const resizers = [...panel.querySelectorAll('.resize-handle'), ...panel.querySelectorAll('.resize-edge')];
+        resizers.forEach(r => {
+            r.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                currentResizer = r;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = panel.getBoundingClientRect();
+                startWidth = rect.width;
+                startHeight = rect.height;
+                panelLeft = rect.left;
+                panelTop = rect.top;
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing || !currentResizer) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            const maxW = parseInt(styles.panel.maxWidth, 10) || 500;
+            const minW = parseInt(styles.panel.minWidth, 10) || 200;
+            const maxH = parseInt(styles.panel.maxHeight, 10) || 800;
+            const minH = parseInt(styles.panel.minHeight, 10) || 150;
+
+            let newW = startWidth, newH = startHeight;
+            let newL = panelLeft, newT = panelTop;
+
+            const corner = currentResizer.classList[1]; // "nw", "ne", etc.
+
+            // If it's a corner handle
+            if (currentResizer.classList.contains('resize-handle')) {
+                switch (corner) {
+                    case 'nw':
+                        newW = startWidth - dx;
+                        newH = startHeight - dy;
+                        newL = panelLeft + (startWidth - newW);
+                        newT = panelTop + (startHeight - newH);
+                        break;
+                    case 'ne':
+                        newW = startWidth + dx;
+                        newH = startHeight - dy;
+                        newT = panelTop + (startHeight - newH);
+                        break;
+                    case 'se':
+                        newW = startWidth + dx;
+                        newH = startHeight + dy;
+                        break;
+                    case 'sw':
+                        newW = startWidth - dx;
+                        newH = startHeight + dy;
+                        newL = panelLeft + (startWidth - newW);
+                        break;
+                }
+            } else {
+                // Edge handle
+                const edge = corner; // "n","s","e","w"
+                switch (edge) {
+                    case 'n':
+                        newH = startHeight - dy;
+                        newT = panelTop + (startHeight - newH);
+                        break;
+                    case 's':
+                        newH = startHeight + dy;
+                        break;
+                    case 'e':
+                        newW = startWidth + dx;
+                        break;
+                    case 'w':
+                        newW = startWidth - dx;
+                        newL = panelLeft + (startWidth - newW);
+                        break;
+                }
+            }
+
+            // Constrain
+            newW = Math.min(maxW, Math.max(minW, newW));
+            newH = Math.min(maxH, Math.max(minH, newH));
+            // Keep in viewport
+            newL = Math.min(window.innerWidth - newW, Math.max(0, newL));
+            newT = Math.min(window.innerHeight - newH, Math.max(0, newT));
+
+            panel.style.width = newW + 'px';
+            panel.style.height = newH + 'px';
+            panel.style.left = newL + 'px';
+            panel.style.top = newT + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            currentResizer = null;
+        });
+    }
+
+    // Observe the syllable element
+    function setupSyllableObserver() {
+        if (syllableObserver) return; // only once
+        syllableObserver = new MutationObserver(mutations => {
+            for (const m of mutations) {
+                if (m.type === 'childList' || m.type === 'characterData') {
+                    const text = m.target.textContent.trim();
+                    if (text) suggestWords(text);
+                }
+            }
+        });
+
+        function waitForSyllable() {
+            const el = document.querySelector('.syllable');
+            if (el) {
+                syllableObserver.observe(el, { childList: true, characterData: true, subtree: true });
+                if (el.textContent.trim()) suggestWords(el.textContent.trim());
+            } else {
+                setTimeout(waitForSyllable, 1000);
+            }
+        }
+        waitForSyllable();
+    }
+
+    // The main initialization function
+    function initScript() {
+        // Build the UI panel
+        createUI();
+
+        // Observe the syllable element for changes
+        setupSyllableObserver();
+    }
+
+    // Expose
+    window.BPS.initScript = initScript;
+})();
