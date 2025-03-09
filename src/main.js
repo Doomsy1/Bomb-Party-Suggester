@@ -14,15 +14,6 @@
 // @require      https://cdn.jsdelivr.net/gh/Doomsy1/Bomb-Party-Suggester@main/src/ui.js
 // ==/UserScript==
 
-/**
- * Module loading order is important!
- * 1. utils.js - Contains utility functions used by other modules
- * 2. styles.js - Contains styling definitions
- * 3. typer.js - Contains typing simulation logic (depends on utils.js)
- * 4. dictionaries.js - Contains dictionary management
- * 5. ui.js - Contains UI creation (depends on all other modules)
- */
-
 (function() {
     'use strict';
 
@@ -34,27 +25,20 @@
         return;
     }
     
-    // Ensure all modules are loaded
-    const ensureModulesLoaded = () => {
-        const requiredModules = ['utils', 'styles', 'typer', 'dictionaries', 'ui'];
-        const missingModules = requiredModules.filter(module => !window[module]);
-        
-        if (missingModules.length > 0) {
-            console.warn(`[BombPartySuggester] Some modules are missing: ${missingModules.join(', ')}. Retrying in 100ms.`);
-            setTimeout(ensureModulesLoaded, 100);
-            return false;
-        }
-        
-        return true;
-    };
+    // Check if all required modules are loaded
+    function areModulesReady() {
+        return window.utils && window.styles && window.typer && 
+               window.dictionaries && window.ui;
+    }
     
     // Initialize the script
     function initScript() {
         console.log("[BombPartySuggester] Initializing script");
         
         // Make sure all modules are loaded before proceeding
-        if (!ensureModulesLoaded()) {
-            setTimeout(initScript, 200);
+        if (!areModulesReady()) {
+            console.log("[BombPartySuggester] Waiting for modules to load...");
+            setTimeout(initScript, 100);
             return;
         }
         

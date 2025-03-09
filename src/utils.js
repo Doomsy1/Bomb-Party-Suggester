@@ -2,68 +2,71 @@
  * utils.js - Utility functions for Bomb Party Suggester
  */
 
-// Helper function for normal distribution
-const normalRandom = (mean, stdDev) => {
-    // Box-Muller transform for normal distribution
-    const u1 = Math.random();
-    const u2 = Math.random();
-    const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-    return mean + z * stdDev;
-};
-
-// Helper function to apply styles to an element
-const applyStyles = (element, styleObj) => {
-    Object.assign(element.style, styleObj);
-};
-
-// Helper function to make an element draggable
-const makeDraggable = (element) => {
-    let isDragging = false;
-    let currentX;
-    let currentY;
-    let initialX;
-    let initialY;
-
-    const dragStart = (e) => {
-        // Don't start drag if clicking on a button or input
-        if (e.target.tagName.toLowerCase() === 'button' ||
-            e.target.tagName.toLowerCase() === 'input') {
-            return;
-        }
-        isDragging = true;
-        initialX = e.clientX - element.offsetLeft;
-        initialY = e.clientY - element.offsetTop;
-        e.preventDefault();
+// Only define functions if they don't already exist (prevents redeclaration)
+if (!window.utils) {
+    // Helper function for normal distribution
+    const normalRandom = (mean, stdDev) => {
+        // Box-Muller transform for normal distribution
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        return mean + z * stdDev;
     };
 
-    const dragEnd = () => {
-        isDragging = false;
+    // Helper function to apply styles to an element
+    const applyStyles = (element, styleObj) => {
+        Object.assign(element.style, styleObj);
     };
 
-    const drag = (e) => {
-        if (!isDragging) return;
+    // Helper function to make an element draggable
+    const makeDraggable = (element) => {
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
 
-        e.preventDefault();
-        currentX = e.clientX - initialX;
-        currentY = e.clientY - initialY;
+        const dragStart = (e) => {
+            // Don't start drag if clicking on a button or input
+            if (e.target.tagName.toLowerCase() === 'button' ||
+                e.target.tagName.toLowerCase() === 'input') {
+                return;
+            }
+            isDragging = true;
+            initialX = e.clientX - element.offsetLeft;
+            initialY = e.clientY - element.offsetTop;
+            e.preventDefault();
+        };
 
-        // Keep panel within viewport bounds
-        currentX = Math.min(Math.max(0, currentX), window.innerWidth - element.offsetWidth);
-        currentY = Math.min(Math.max(0, currentY), window.innerHeight - element.offsetHeight);
+        const dragEnd = () => {
+            isDragging = false;
+        };
 
-        element.style.left = currentX + 'px';
-        element.style.top = currentY + 'px';
+        const drag = (e) => {
+            if (!isDragging) return;
+
+            e.preventDefault();
+            currentX = e.clientX - initialX;
+            currentY = e.clientY - initialY;
+
+            // Keep panel within viewport bounds
+            currentX = Math.min(Math.max(0, currentX), window.innerWidth - element.offsetWidth);
+            currentY = Math.min(Math.max(0, currentY), window.innerHeight - element.offsetHeight);
+
+            element.style.left = currentX + 'px';
+            element.style.top = currentY + 'px';
+        };
+
+        element.addEventListener('mousedown', dragStart);
+        element.addEventListener('mousemove', drag);
+        element.addEventListener('mouseup', dragEnd);
+        element.addEventListener('mouseleave', dragEnd);
     };
 
-    element.addEventListener('mousedown', dragStart);
-    element.addEventListener('mousemove', drag);
-    element.addEventListener('mouseup', dragEnd);
-    element.addEventListener('mouseleave', dragEnd);
-};
-
-// Initialize utils or use existing one to prevent duplication
-window.utils = window.utils || {
-    normalRandom,
-    applyStyles,
-    makeDraggable
-}; 
+    // Expose functions to global scope for userscript use
+    window.utils = {
+        normalRandom,
+        applyStyles,
+        makeDraggable
+    };
+} 
