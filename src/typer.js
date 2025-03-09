@@ -2,14 +2,17 @@
  * typer.js - Typing simulation functionality for Bomb Party Suggester
  */
 
+// ensure utils is loaded first
+if (!window.utils || !window.utils.normalRandom) {
+    console.error("[BombPartySuggester] Utils module must be loaded before typer.js");
+    return;
+}
+
 // only define typer if it doesn't already exist (prevents redeclaration)
 window.typer = window.typer || {};
 
 if (!window.typer.initialized) {
-    // use normalRandom directly from window.utils
-    const normalRandom = window.utils.normalRandom;
-
-    // Keyboard layout and typing simulation helpers
+    // keyboard layout and typing simulation helpers
     const KEYBOARD_LAYOUT = {
         // each key's position on a standard QWERTY keyboard
         // format: [row, column]
@@ -103,7 +106,7 @@ if (!window.typer.initialized) {
         // Calculate delay with variation
         const baseDelay = TYPER_CONFIG.baseDelay + (distance * TYPER_CONFIG.distanceMultiplier);
         const stdDev = baseDelay * TYPER_CONFIG.delayVariation;
-        let delay = normalRandom(baseDelay, stdDev);
+        let delay = window.utils.normalRandom(baseDelay, stdDev);
 
         // Ensure minimum delay
         return Math.max(TYPER_CONFIG.minDelay, delay);
@@ -131,7 +134,7 @@ if (!window.typer.initialized) {
 
         // Wait for the player to "notice" the typo
         await new Promise(resolve => setTimeout(resolve, 
-            normalRandom(TYPER_CONFIG.typoNoticeDelay.mean, TYPER_CONFIG.typoNoticeDelay.stdDev)));
+            window.utils.normalRandom(TYPER_CONFIG.typoNoticeDelay.mean, TYPER_CONFIG.typoNoticeDelay.stdDev)));
 
         // Backspace to remove the typo
         inputField.value = inputField.value.slice(0, -1);
@@ -139,7 +142,7 @@ if (!window.typer.initialized) {
 
         // Wait before typing the correct character
         await new Promise(resolve => setTimeout(resolve, 
-            normalRandom(TYPER_CONFIG.typoRecoveryDelay.mean, TYPER_CONFIG.typoRecoveryDelay.stdDev)));
+            window.utils.normalRandom(TYPER_CONFIG.typoRecoveryDelay.mean, TYPER_CONFIG.typoRecoveryDelay.stdDev)));
 
         // Type the correct character
         inputField.value += correctChar;

@@ -21,8 +21,8 @@ if (!window.utils.normalRandom) {
         Object.assign(element.style, styleObj);
     };
 
-    // Helper function to make an element draggable
-    const makeDraggable = (element) => {
+    // helper function to make an element draggable
+    window.utils.makeDraggable = (element) => {
         let isDragging = false;
         let currentX;
         let currentY;
@@ -30,7 +30,7 @@ if (!window.utils.normalRandom) {
         let initialY;
 
         const dragStart = (e) => {
-            // Don't start drag if clicking on a button or input
+            // don't start drag if clicking on a button or input
             if (e.target.tagName.toLowerCase() === 'button' ||
                 e.target.tagName.toLowerCase() === 'input') {
                 return;
@@ -52,7 +52,7 @@ if (!window.utils.normalRandom) {
             currentX = e.clientX - initialX;
             currentY = e.clientY - initialY;
 
-            // Keep panel within viewport bounds
+            // keep panel within viewport bounds
             currentX = Math.min(Math.max(0, currentX), window.innerWidth - element.offsetWidth);
             currentY = Math.min(Math.max(0, currentY), window.innerHeight - element.offsetHeight);
 
@@ -64,12 +64,5 @@ if (!window.utils.normalRandom) {
         element.addEventListener('mousemove', drag);
         element.addEventListener('mouseup', dragEnd);
         element.addEventListener('mouseleave', dragEnd);
-    };
-
-    // Expose functions to global scope for userscript use
-    window.utils = {
-        normalRandom,
-        applyStyles,
-        makeDraggable
     };
 } 
