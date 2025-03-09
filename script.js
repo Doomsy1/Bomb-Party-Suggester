@@ -275,7 +275,7 @@
 
         // Typo characteristics
         typoChance: 2, // probability of making a typo (2%)
-        
+
         // Typo correction timing
         typoNoticeDelay: {
             mean: 250,
@@ -354,7 +354,7 @@
 
         const dragStart = (e) => {
             // Don't start drag if clicking on a button or input
-            if (e.target.tagName.toLowerCase() === 'button' || 
+            if (e.target.tagName.toLowerCase() === 'button' ||
                 e.target.tagName.toLowerCase() === 'input') {
                 return;
             }
@@ -370,7 +370,7 @@
 
         const drag = (e) => {
             if (!isDragging) return;
-            
+
             e.preventDefault();
             currentX = e.clientX - initialX;
             currentY = e.clientY - initialY;
@@ -423,15 +423,15 @@
             marginLeft: '8px',
             backgroundColor: 'transparent'
         });
-        
+
         resetButton.onmouseenter = () => {
             resetButton.style.backgroundColor = 'rgba(97, 218, 251, 0.2)';
         };
-        
+
         resetButton.onmouseleave = () => {
             resetButton.style.backgroundColor = 'transparent';
         };
-        
+
         resetButton.onclick = () => {
             // Define the default configuration
             const defaultConfig = {
@@ -450,7 +450,7 @@
 
             // Get all input groups
             const inputGroups = panel.querySelectorAll('.settingsGroup');
-            
+
             // Map of labels to config paths
             const labelToConfigPath = {
                 'Base Delay (ms)': ['baseDelay'],
@@ -471,7 +471,7 @@
                 const label = group.querySelector('label').textContent;
                 const slider = group.querySelector('input[type="range"]');
                 const input = group.querySelector('input[type="number"]');
-                
+
                 // Get the config path for this label
                 const configPath = labelToConfigPath[label];
                 if (!configPath) return;
@@ -496,10 +496,10 @@
 
             // Save to localStorage
             saveSettings();
-            
+
             console.log("[BombPartySuggester] Settings reset to defaults:", TYPER_CONFIG);
         };
-        
+
         headerContainer.appendChild(resetButton);
         panel.appendChild(headerContainer);
 
@@ -524,23 +524,23 @@
     // Update the calculateTypingDelay function to use config
     const calculateTypingDelay = (fromKey, toKey) => {
         if (!fromKey) return TYPER_CONFIG.baseDelay;
-        
+
         fromKey = fromKey.toLowerCase();
         toKey = toKey.toLowerCase();
-        
+
         const fromPos = KEYBOARD_LAYOUT.layout[fromKey];
         const toPos = KEYBOARD_LAYOUT.layout[toKey];
-        
+
         if (!fromPos || !toPos) return TYPER_CONFIG.baseDelay;
-        
+
         const distance = Math.sqrt(
-            Math.pow(fromPos[0] - toPos[0], 2) + 
+            Math.pow(fromPos[0] - toPos[0], 2) +
             Math.pow(fromPos[1] - toPos[1], 2)
         );
-        
+
         const meanDelay = TYPER_CONFIG.baseDelay + (distance * TYPER_CONFIG.distanceMultiplier);
         const stdDev = meanDelay * TYPER_CONFIG.delayVariation;
-        
+
         return Math.max(TYPER_CONFIG.minDelay, normalRandom(meanDelay, stdDev));
     };
 
@@ -548,32 +548,32 @@
     const simulateTypo = async (inputField, correctChar) => {
         correctChar = correctChar.toLowerCase();
         if (!KEYBOARD_LAYOUT.adjacent[correctChar]) return false;
-        
+
         if (Math.random() > (TYPER_CONFIG.typoChance / 100)) return false;
-        
+
         const typoChar = KEYBOARD_LAYOUT.adjacent[correctChar][
             Math.floor(Math.random() * KEYBOARD_LAYOUT.adjacent[correctChar].length)
         ];
-        
+
         inputField.value += typoChar;
         inputField.dispatchEvent(new Event('input', { bubbles: true }));
         await new Promise(resolve => setTimeout(resolve, calculateTypingDelay(null, typoChar)));
-        
-        await new Promise(resolve => setTimeout(resolve, 
+
+        await new Promise(resolve => setTimeout(resolve,
             normalRandom(TYPER_CONFIG.typoNoticeDelay.mean, TYPER_CONFIG.typoNoticeDelay.stdDev)));
-        
+
         inputField.value = inputField.value.slice(0, -1);
         inputField.dispatchEvent(new Event('input', { bubbles: true }));
-        
+
         await new Promise(resolve => setTimeout(resolve,
             normalRandom(TYPER_CONFIG.typoBackspaceDelay.mean, TYPER_CONFIG.typoBackspaceDelay.stdDev)));
-        
+
         inputField.value += correctChar;
         inputField.dispatchEvent(new Event('input', { bubbles: true }));
-        
+
         await new Promise(resolve => setTimeout(resolve,
             normalRandom(TYPER_CONFIG.typoRecoveryDelay.mean, TYPER_CONFIG.typoRecoveryDelay.stdDev)));
-        
+
         return true;
     };
 
@@ -583,7 +583,7 @@
         const selfTurn = document.querySelector('.selfTurn');
         const form = document.querySelector('.selfTurn form');
         const inputField = document.querySelector('.selfTurn input');
-        
+
         if (!inputField || !form || selfTurn.hidden) {
             console.log("[BombPartySuggester] Could not find input field or not your turn");
             return;
@@ -664,12 +664,12 @@
                         ...styles.resizeHandle,
                         ...pos
                     });
-                    
+
                     // Add visible dot in center of handle
                     const dot = document.createElement('div');
                     applyStyles(dot, styles.resizeDot);
                     handle.appendChild(dot);
-                    
+
                     panel.appendChild(handle);
                 } else { // edge
                     const edge = document.createElement('div');
@@ -690,7 +690,7 @@
             // Dictionary size selector
             const sizeSelector = document.createElement('div');
             applyStyles(sizeSelector, styles.sizeSelector);
-            
+
             // Create size buttons
             const buttons = {};
             ['5k', '20k', '170k'].forEach(size => {
@@ -701,7 +701,7 @@
                 }
                 sizeSelector.appendChild(buttons[size]);
             });
-            
+
             contentContainer.appendChild(sizeSelector);
 
             // Sort controls
@@ -720,14 +720,14 @@
             Object.entries(sortMethods).forEach(([method, { label }]) => {
                 const button = document.createElement('button');
                 button.textContent = `${label} ↑`;
-                
+
                 applyStyles(button, styles.sortButton);
-                
+
                 let isAscending = true;
                 button.onclick = () => {
                     // Don't do anything if the button is disabled
                     if (button.disabled) return;
-                    
+
                     // Reset all buttons
                     Object.values(sortButtons).forEach(btn => {
                         applyStyles(btn, styles.sortButton);
@@ -736,25 +736,25 @@
                             btn.textContent = btn.textContent.replace(/[↑↓]/, '↑');
                         }
                     });
-                    
+
                     // Toggle direction if it's the same method
                     if (currentSort.method === method) {
                         isAscending = !isAscending;
                     } else {
                         isAscending = true;
                     }
-                    
+
                     // Update button text and style
                     button.textContent = `${label} ${isAscending ? '↓' : '↑'}`;
                     applyStyles(button, {...styles.sortButton, ...styles.activeSortButton});
-                    
+
                     // Update sort state
                     updateSort(method, isAscending ? 'desc' : 'asc');
                 };
-                
+
                 sortButtons[method] = button;
                 sortControls.appendChild(button);
-                
+
                 // Initially disable frequency button if using the 170k dictionary
                 if (method === 'frequency' && currentDictionary === '170k') {
                     button.disabled = true;
@@ -763,7 +763,7 @@
                     button.title = 'Frequency sorting not available for 170k dictionary';
                 }
             });
-            
+
             contentContainer.appendChild(sortControls);
 
             // Results container
@@ -776,13 +776,13 @@
             const settingsButton = document.createElement('button');
             settingsButton.textContent = '⚙️';
             applyStyles(settingsButton, styles.settingsButton);
-            
+
             const settingsPanel = createSettingsPanel();
-            
+
             settingsButton.onclick = () => {
                 settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
             };
-            
+
             panel.appendChild(settingsButton);
 
             // Add panel to document
@@ -827,18 +827,18 @@
                 console.log("[BombPartySuggester] Switching from frequency to length sort (no frequency data available)");
                 method = 'length';
             }
-            
+
             // Update sort state
             currentSort.method = method;
             currentSort.direction = direction;
-            
+
             // Update sort button UI
             Object.entries(sortButtons).forEach(([buttonMethod, button]) => {
                 // Always ensure frequency button is hidden for 170k dictionary
                 if (buttonMethod === 'frequency' && !dictionaries[currentDictionary].hasFrequency) {
                     button.style.display = 'none';
                 }
-                
+
                 // Update button styles and arrows
                 if (buttonMethod === method) {
                     applyStyles(button, {...styles.sortButton, ...styles.activeSortButton});
@@ -848,7 +848,7 @@
                     button.textContent = `${sortMethods[buttonMethod].label} ↑`;
                 }
             });
-            
+
             // Re-sort current results
             const syllableElement = document.querySelector('.syllable');
             if (syllableElement) {
@@ -859,14 +859,14 @@
         // Sort matches based on current sort settings
         function sortMatches(matches) {
             const { method, direction } = currentSort;
-            
+
             // If trying to sort by frequency but dictionary doesn't support it,
             // fall back to length sort
             let sortMethod = method;
             if (method === 'frequency' && !dictionaries[currentDictionary].hasFrequency) {
                 sortMethod = 'length';
             }
-            
+
             const sortFunctions = {
                 frequency: (a, b) => b.freq - a.freq,
                 length: (a, b) => b.word.length - a.word.length,
@@ -876,10 +876,10 @@
                     return scoreB - scoreA;
                 }
             };
-            
+
             const sortFn = sortFunctions[sortMethod];
             matches.sort(direction === 'desc' ? sortFn : (a, b) => -sortFn(a, b));
-            
+
             return matches;
         }
 
@@ -888,21 +888,21 @@
             const btn = document.createElement('button');
             btn.textContent = `${size}`;
             applyStyles(btn, styles.button);
-            
+
             btn.onclick = () => {
                 if (!dictionaries[size].words.length) return; // don't switch if not loaded
-                
+
                 // Update dictionary and buttons
                 currentDictionary = size;
-                
+
                 // Reset all dictionary buttons first
                 Object.values(buttons).forEach(button => {
                     applyStyles(button, styles.button);
                 });
-                
+
                 // Set only the clicked button as active
                 applyStyles(btn, {...styles.button, ...styles.activeButton});
-                
+
                 // Update sort buttons visibility based on dictionary frequency support
                 const freqButton = sortButtons.frequency;
                 if (dictionaries[size].hasFrequency) {
@@ -921,7 +921,7 @@
                             applyStyles(sortBtn, styles.sortButton);
                             sortBtn.textContent = sortBtn.textContent.replace(/[↑↓]/, '↑');
                         });
-                        
+
                         // Set length as active
                         applyStyles(sortButtons.length, {...styles.sortButton, ...styles.activeSortButton});
                         sortButtons.length.textContent = 'Len ↓';
@@ -929,19 +929,19 @@
                         currentSort.direction = 'desc';
                     }
                 }
-                
+
                 // Update suggestions with new dictionary
                 const syllableElement = document.querySelector('.syllable');
                 if (syllableElement) {
                     suggestWords(syllableElement.textContent.trim());
                 }
             };
-            
+
             // Prevent dragging when interacting with buttons
             btn.onmousedown = (e) => {
                 e.stopPropagation();
             };
-            
+
             return btn;
         };
 
@@ -1004,11 +1004,11 @@
                 if (isDragging) {
                     const newLeft = e.clientX - offsetX;
                     const newTop = e.clientY - offsetY;
-                    
+
                     // Keep panel within viewport bounds
                     const maxLeft = window.innerWidth - panel.offsetWidth;
                     const maxTop = window.innerHeight - panel.offsetHeight;
-                    
+
                     panel.style.left = Math.min(maxLeft, Math.max(0, newLeft)) + 'px';
                     panel.style.top = Math.min(maxTop, Math.max(0, newTop)) + 'px';
                     panel.style.right = 'auto';
@@ -1019,10 +1019,10 @@
                 if (isResizing && currentResizer) {
                     const dx = e.clientX - startX;
                     const dy = e.clientY - startY;
-                    
+
                     const isCorner = currentResizer.classList.contains('resize-handle');
-                    const direction = isCorner ? 
-                        currentResizer.classList[1] : 
+                    const direction = isCorner ?
+                        currentResizer.classList[1] :
                         currentResizer.classList[1];
 
                     let newWidth = startWidth;
@@ -1135,7 +1135,7 @@
             let matches = dictionaries[currentDictionary].words.filter(entry =>
                 entry.word.toLowerCase().includes(lower)
             );
-            
+
             // Apply current sort
             matches = sortMatches(matches);
 
@@ -1146,11 +1146,11 @@
 
             const ul = document.createElement('ul');
             applyStyles(ul, styles.resultsList);
-            
+
             matches.slice(0, 15).forEach(({ word }) => {
                 const li = document.createElement('li');
                 applyStyles(li, styles.resultsItem);
-                
+
                 // Add hover effect based on turn state
                 li.onmouseenter = () => {
                     if (isPlayerTurn()) {
@@ -1162,22 +1162,22 @@
                 li.onmouseleave = () => {
                     applyStyles(li, { backgroundColor: 'transparent' });
                 };
-                
+
                 // Add click handler
                 li.onclick = () => {
                     if (isPlayerTurn()) {
                         simulateTyping(word);
                     }
                 };
-                
+
                 // Highlight the matching syllable and special letters
                 const wordLower = word.toLowerCase();
                 const syllableLower = lower;
                 const index = wordLower.indexOf(syllableLower);
-                
+
                 // Special letters to highlight
                 const specialLetters = ['v', 'k', 'j', 'x', 'q', 'z', 'w'];
-                
+
                 if (index !== -1) {
                     let result = '';
                     let i = 0;
@@ -1211,10 +1211,10 @@
                     }
                     li.innerHTML = result;
                 }
-                
+
                 ul.appendChild(li);
             });
-            
+
             resultsDiv.innerHTML = '';
             resultsDiv.appendChild(ul);
         }
@@ -1285,7 +1285,7 @@
                     } else if (size === '170k') {
                         // Efficiently process the large ENABLE dictionary
                         console.log(`[BombPartySuggester] Processing ${size} dictionary with ${lines.length} words...`);
-                        
+
                         // For the large dictionary, we use simpler objects with just the word
                         // to reduce memory usage and improve performance
                         dictionaries[size].words = lines

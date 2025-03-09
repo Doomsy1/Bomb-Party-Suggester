@@ -1,12 +1,15 @@
-// styles.js - Contains all styling information for the Bomb Party Suggester
+/**
+ * styles.js - Style definitions for Bomb Party Suggester
+ */
 
+// Define styles centrally for better organization and maintenance
 const styles = {
     colors: {
         primary: '#61dafb',
         background: '#282c34',
         text: '#ffffff',
-        highlight: '#2EFF2E',
-        special: '#FF8C00'
+        highlight: '#2EFF2E', // brighter green
+        special: '#FF8C00' // orange for special letters
     },
     panel: {
         position: 'fixed',
@@ -21,8 +24,8 @@ const styles = {
         minWidth: '200px',
         minHeight: '150px',
         maxHeight: '800px',
-        width: '300px',
-        height: '400px',
+        width: '300px', // default width
+        height: '400px', // default height
         fontFamily: 'sans-serif',
         fontSize: '14px',
         color: '#fff',
@@ -33,9 +36,9 @@ const styles = {
     },
     resizeHandle: {
         position: 'absolute',
-        width: '20px',
-        height: '20px',
-        background: 'transparent',
+        width: '20px', // larger hitbox
+        height: '20px', // larger hitbox
+        background: 'transparent', // transparent background for larger hitbox
         zIndex: '2147483647',
         cursor: 'nw-resize'
     },
@@ -63,7 +66,7 @@ const styles = {
     sortControls: {
         marginBottom: '8px',
         display: 'flex',
-        gap: '8px',
+        gap: '8px', // increased gap for better spacing
         justifyContent: 'center',
         flexWrap: 'wrap'
     },
@@ -112,7 +115,7 @@ const styles = {
         backgroundColor: 'rgba(97, 218, 251, 0.2)'
     },
     resultsItemDisabled: {
-        backgroundColor: 'rgba(220, 53, 69, 0.2)'
+        backgroundColor: 'rgba(220, 53, 69, 0.2)' // dulled red background
     },
     resultsDiv: {
         height: 'auto',
@@ -182,5 +185,5 @@ const styles = {
     }
 };
 
-// Export styles to global scope
-window.BombPartySuggesterStyles = { styles }; 
+// Expose styles to global scope for userscript use
+window.styles = { styles }; 
