@@ -1,4 +1,4 @@
-// uiSettings.js
+// uiDragResize.js
 window.BPS = window.BPS || {};
 
 (function() {
@@ -6,185 +6,218 @@ window.BPS = window.BPS || {};
 
     const styles = window.BPS.styles;
     const applyStyles = window.BPS.applyStyles;
-    const TYPER_CONFIG = window.BPS.TYPER_CONFIG;
-    const saveSettings = window.BPS.saveSettings;
-    const loadSavedSettings = window.BPS.loadSavedSettings;
-    const makeDraggable = window.BPS.makeDraggable;
 
     /**
-     * Builds the entire Typer Settings panel, including the reset button
-     * and all slider inputs.
+     * Makes an element draggable by clicking anywhere on it (except buttons/inputs).
      */
-    function createSettingsPanel() {
-        const panel = document.createElement('div');
-        panel.id = 'typerSettingsPanel';
-        applyStyles(panel, styles.settingsPanel);
-        panel.style.display = 'none'; // hidden by default
+    function makeDraggable(element) {
+        let isDragging = false;
+        let offsetX = 0, offsetY = 0;
 
-        // Make panel draggable
-        makeDraggable(panel);
+        element.addEventListener('mousedown', (e) => {
+            const tag = e.target.tagName.toLowerCase();
+            // Don’t drag if clicking on a button or input
+            if (tag === 'button' || tag === 'input') return;
 
-        // Header container
-        const header = document.createElement('div');
-        applyStyles(header, {
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '10px'
+            isDragging = true;
+            offsetX = e.clientX - element.offsetLeft;
+            offsetY = e.clientY - element.offsetTop;
+            e.preventDefault();
         });
 
-        const title = document.createElement('h3');
-        title.textContent = 'Typer Settings';
-        title.style.margin = '0';
-        title.style.color = '#61dafb';
-        title.style.fontSize = '14px';
-        header.appendChild(title);
-
-        // Reset button
-        const resetBtn = document.createElement('button');
-        resetBtn.textContent = '↺';
-        resetBtn.title = 'Reset to defaults';
-        applyStyles(resetBtn, {
-            ...styles.button,
-            padding: '2px 6px',
-            fontSize: '14px',
-            marginLeft: '8px',
-            backgroundColor: 'transparent'
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const x = e.clientX - offsetX;
+            const y = e.clientY - offsetY;
+            element.style.left = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, x)) + 'px';
+            element.style.top = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, y)) + 'px';
         });
 
-        resetBtn.onmouseenter = () => { resetBtn.style.backgroundColor = 'rgba(97, 218, 251, 0.2)'; };
-        resetBtn.onmouseleave = () => { resetBtn.style.backgroundColor = 'transparent'; };
-
-        resetBtn.onclick = () => {
-            const defaults = {
-                baseDelay: 60,
-                distanceMultiplier: 12.5,
-                minDelay: 15,
-                delayVariation: 0.2,
-                typoChance: 2,
-                typoNoticeDelay: { mean: 250, stdDev: 60 },
-                typoBackspaceDelay: { mean: 100, stdDev: 40 },
-                typoRecoveryDelay: { mean: 200, stdDev: 50 }
-            };
-            Object.assign(TYPER_CONFIG, JSON.parse(JSON.stringify(defaults)));
-            saveSettings();
-            refreshSettingsPanel(panel);
-            console.log("[BombPartySuggester] Settings reset to defaults.");
-        };
-
-        header.appendChild(resetBtn);
-        panel.appendChild(header);
-
-        // Add setting inputs
-        panel.appendChild(createSettingInput('Base Delay (ms)', 'baseDelay', TYPER_CONFIG.baseDelay, 0, 100, 1));
-        panel.appendChild(createSettingInput('Distance Multiplier', 'distanceMultiplier', TYPER_CONFIG.distanceMultiplier, 0, 20, 0.1));
-        panel.appendChild(createSettingInput('Minimum Delay (ms)', 'minDelay', TYPER_CONFIG.minDelay, 0, 50, 1));
-        panel.appendChild(createSettingInput('Delay Variation', 'delayVariation', TYPER_CONFIG.delayVariation, 0, 1, 0.01));
-        panel.appendChild(createSettingInput('Typo Chance (%)', 'typoChance', TYPER_CONFIG.typoChance, 0, 10, 0.1));
-        panel.appendChild(createSettingInput('Notice Delay (ms)', 'typoNoticeDelay.mean', TYPER_CONFIG.typoNoticeDelay.mean, 0, 1000, 10));
-        panel.appendChild(createSettingInput('Notice Variation', 'typoNoticeDelay.stdDev', TYPER_CONFIG.typoNoticeDelay.stdDev, 0, 200, 5));
-        panel.appendChild(createSettingInput('Backspace Delay (ms)', 'typoBackspaceDelay.mean', TYPER_CONFIG.typoBackspaceDelay.mean, 0, 500, 10));
-        panel.appendChild(createSettingInput('Backspace Variation', 'typoBackspaceDelay.stdDev', TYPER_CONFIG.typoBackspaceDelay.stdDev, 0, 100, 5));
-        panel.appendChild(createSettingInput('Recovery Delay (ms)', 'typoRecoveryDelay.mean', TYPER_CONFIG.typoRecoveryDelay.mean, 0, 500, 10));
-        panel.appendChild(createSettingInput('Recovery Variation', 'typoRecoveryDelay.stdDev', TYPER_CONFIG.typoRecoveryDelay.stdDev, 0, 100, 5));
-
-        document.body.appendChild(panel);
-        return panel;
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
     }
 
     /**
-     * Creates a single labeled slider + numeric input for a given TYPER_CONFIG path.
+     * Adds corner & edge resize handles to a panel, then wires up logic
+     * to resize the panel by dragging them. Also includes standard “drag entire panel” logic.
      */
-    function createSettingInput(labelText, configPath, initialValue, min, max, step) {
-        const group = document.createElement('div');
-        group.className = 'settingsGroup';
-        applyStyles(group, styles.settingsGroup);
+    function setupDraggableResize(panel) {
+        // Corner handles
+        const corners = [
+            { corner: 'nw', top: '-10px', left: '-10px', cursor: 'nw-resize' },
+            { corner: 'ne', top: '-10px', right: '-10px', cursor: 'ne-resize' },
+            { corner: 'se', bottom: '-10px', right: '-10px', cursor: 'se-resize' },
+            { corner: 'sw', bottom: '-10px', left: '-10px', cursor: 'sw-resize' }
+        ];
+        corners.forEach(pos => {
+            const handle = document.createElement('div');
+            handle.className = `resize-handle ${pos.corner}`;
+            applyStyles(handle, { ...styles.resizeHandle, ...pos });
 
-        const labelEl = document.createElement('label');
-        labelEl.textContent = labelText;
-        applyStyles(labelEl, styles.settingsLabel);
-        group.appendChild(labelEl);
+            // Dot in the center for a visual
+            const dot = document.createElement('div');
+            applyStyles(dot, styles.resizeDot);
+            handle.appendChild(dot);
 
-        const inputGroup = document.createElement('div');
-        applyStyles(inputGroup, styles.settingsInputGroup);
+            panel.appendChild(handle);
+        });
 
-        const slider = document.createElement('input');
-        slider.type = 'range';
-        slider.min = min;
-        slider.max = max;
-        slider.step = step;
-        slider.value = initialValue;
-        applyStyles(slider, styles.settingsSlider);
+        // Edge handles
+        const edges = [
+            { edge: 'n', top: '-5px', left: '20px', right: '20px', height: '10px', cursor: 'ns-resize' },
+            { edge: 's', bottom: '-5px', left: '20px', right: '20px', height: '10px', cursor: 'ns-resize' },
+            { edge: 'e', top: '20px', right: '-5px', bottom: '20px', width: '10px', cursor: 'ew-resize' },
+            { edge: 'w', top: '20px', left: '-5px', bottom: '20px', width: '10px', cursor: 'ew-resize' }
+        ];
+        edges.forEach(pos => {
+            const edge = document.createElement('div');
+            edge.className = `resize-edge ${pos.edge}`;
+            applyStyles(edge, { ...styles.resizeEdge, ...pos });
+            panel.appendChild(edge);
+        });
 
-        const numericInput = document.createElement('input');
-        numericInput.type = 'number';
-        numericInput.value = initialValue;
-        numericInput.min = min;
-        numericInput.max = max;
-        numericInput.step = step;
-        applyStyles(numericInput, styles.settingsInput);
+        // Dragging the entire panel
+        let draggingPanel = false;
+        let offsetX = 0, offsetY = 0;
 
-        const updateValue = (val) => {
-            // Traverse TYPER_CONFIG by splitting configPath ("typoNoticeDelay.mean", etc.)
-            const keys = configPath.split('.');
-            let target = TYPER_CONFIG;
-            for (let i = 0; i < keys.length - 1; i++) {
-                target = target[keys[i]];
+        panel.addEventListener('mousedown', (e) => {
+            // If user clicked on a resize-handle, do not drag the entire panel
+            if (e.target.classList.contains('resize-handle') ||
+                e.target.classList.contains('resize-edge')) {
+                return;
             }
-            target[keys[keys.length - 1]] = parseFloat(val);
+            draggingPanel = true;
+            offsetX = e.clientX - panel.getBoundingClientRect().left;
+            offsetY = e.clientY - panel.getBoundingClientRect().top;
+            e.preventDefault();
+        });
 
-            slider.value = val;
-            numericInput.value = val;
-            saveSettings();
-        };
+        panel.addEventListener('mousemove', (e) => {
+            if (!draggingPanel) return;
+            const newLeft = e.clientX - offsetX;
+            const newTop = e.clientY - offsetY;
+            panel.style.left = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, newLeft)) + 'px';
+            panel.style.top = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, newTop)) + 'px';
+        });
 
-        slider.addEventListener('input', () => updateValue(slider.value));
-        numericInput.addEventListener('change', () => updateValue(numericInput.value));
+        panel.addEventListener('mouseup', () => {
+            draggingPanel = false;
+        });
+        panel.addEventListener('mouseleave', () => {
+            draggingPanel = false;
+        });
 
-        inputGroup.appendChild(slider);
-        inputGroup.appendChild(numericInput);
-        group.appendChild(inputGroup);
-        return group;
-    }
+        // Resizing logic
+        let resizing = false;
+        let currentResizer = null;
+        let startX, startY, startWidth, startHeight, panelLeft, panelTop;
 
-    /**
-     * After a reset, we update all sliders/inputs to match the fresh TYPER_CONFIG values.
-     */
-    function refreshSettingsPanel(panel) {
-        const groups = panel.querySelectorAll('.settingsGroup');
-        groups.forEach(group => {
-            const label = group.querySelector('label').textContent;
-            const slider = group.querySelector('input[type="range"]');
-            const numericInput = group.querySelector('input[type="number"]');
+        const resizers = [
+            ...panel.querySelectorAll('.resize-handle'),
+            ...panel.querySelectorAll('.resize-edge')
+        ];
+        resizers.forEach(r => {
+            r.addEventListener('mousedown', (e) => {
+                resizing = true;
+                currentResizer = r;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = panel.getBoundingClientRect();
+                startWidth = rect.width;
+                startHeight = rect.height;
+                panelLeft = rect.left;
+                panelTop = rect.top;
+                e.preventDefault();
+                e.stopPropagation(); // don’t trigger panel-dragging
+            });
+        });
 
-            const labelToPath = {
-                'Base Delay (ms)': 'baseDelay',
-                'Distance Multiplier': 'distanceMultiplier',
-                'Minimum Delay (ms)': 'minDelay',
-                'Delay Variation': 'delayVariation',
-                'Typo Chance (%)': 'typoChance',
-                'Notice Delay (ms)': 'typoNoticeDelay.mean',
-                'Notice Variation': 'typoNoticeDelay.stdDev',
-                'Backspace Delay (ms)': 'typoBackspaceDelay.mean',
-                'Backspace Variation': 'typoBackspaceDelay.stdDev',
-                'Recovery Delay (ms)': 'typoRecoveryDelay.mean',
-                'Recovery Variation': 'typoRecoveryDelay.stdDev'
-            };
-            const path = labelToPath[label];
-            if (!path) return;
+        document.addEventListener('mousemove', (e) => {
+            if (!resizing || !currentResizer) return;
 
-            // Walk TYPER_CONFIG
-            const parts = path.split('.');
-            let val = TYPER_CONFIG;
-            for (const p of parts) {
-                val = val[p];
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            const maxW = parseInt(styles.panel.maxWidth, 10) || 500;
+            const minW = parseInt(styles.panel.minWidth, 10) || 200;
+            const maxH = parseInt(styles.panel.maxHeight, 10) || 800;
+            const minH = parseInt(styles.panel.minHeight, 10) || 150;
+
+            let newW = startWidth;
+            let newH = startHeight;
+            let newL = panelLeft;
+            let newT = panelTop;
+
+            // e.g. "nw", "n", "se", etc.
+            const direction = currentResizer.classList[1]; 
+
+            if (currentResizer.classList.contains('resize-handle')) {
+                // Corner handle
+                switch (direction) {
+                    case 'nw':
+                        newW = startWidth - dx;
+                        newH = startHeight - dy;
+                        newL = panelLeft + (startWidth - newW);
+                        newT = panelTop + (startHeight - newH);
+                        break;
+                    case 'ne':
+                        newW = startWidth + dx;
+                        newH = startHeight - dy;
+                        newT = panelTop + (startHeight - newH);
+                        break;
+                    case 'se':
+                        newW = startWidth + dx;
+                        newH = startHeight + dy;
+                        break;
+                    case 'sw':
+                        newW = startWidth - dx;
+                        newH = startHeight + dy;
+                        newL = panelLeft + (startWidth - newW);
+                        break;
+                }
+            } else {
+                // Edge handle
+                switch (direction) {
+                    case 'n':
+                        newH = startHeight - dy;
+                        newT = panelTop + (startHeight - newH);
+                        break;
+                    case 's':
+                        newH = startHeight + dy;
+                        break;
+                    case 'e':
+                        newW = startWidth + dx;
+                        break;
+                    case 'w':
+                        newW = startWidth - dx;
+                        newL = panelLeft + (startWidth - newW);
+                        break;
+                }
             }
-            slider.value = val;
-            numericInput.value = val;
+
+            // Constrain dimensions
+            newW = Math.min(maxW, Math.max(minW, newW));
+            newH = Math.min(maxH, Math.max(minH, newH));
+            // Keep in viewport
+            newL = Math.min(window.innerWidth - newW, Math.max(0, newL));
+            newT = Math.min(window.innerHeight - newH, Math.max(0, newT));
+
+            // Apply
+            panel.style.width = newW + 'px';
+            panel.style.height = newH + 'px';
+            panel.style.left = newL + 'px';
+            panel.style.top = newT + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            resizing = false;
+            currentResizer = null;
         });
     }
 
-    // Expose
-    window.BPS.createSettingsPanel = createSettingsPanel;
-    window.BPS.refreshSettingsPanel = refreshSettingsPanel;
+    // Expose these on window.BPS
+    window.BPS.makeDraggable = makeDraggable;
+    window.BPS.setupDraggableResize = setupDraggableResize;
 })();

@@ -7,12 +7,9 @@
 // @grant        none
 // @run-at       document-start
 
-// Core Modules
 // @require  https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/styles.js
 // @require  https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/typer.js
 // @require  https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/dictionaryLoader.js
-
-// UI Modules (Modularized)
 // @require  https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/uiDragResize.js
 // @require  https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/uiSettings.js
 // @require  https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/uiSuggester.js
