@@ -2,10 +2,12 @@
  * typer.js - Typing simulation functionality for Bomb Party Suggester
  */
 
-// Only define typer if it doesn't already exist (prevents redeclaration)
-if (!window.typer) {
-    // Use normalRandom from the global utils object
-    const { normalRandom } = window.utils;
+// only define typer if it doesn't already exist (prevents redeclaration)
+window.typer = window.typer || {};
+
+if (!window.typer.initialized) {
+    // use normalRandom directly from window.utils
+    const normalRandom = window.utils.normalRandom;
 
     // Keyboard layout and typing simulation helpers
     const KEYBOARD_LAYOUT = {
@@ -198,4 +200,6 @@ if (!window.typer) {
         simulateTyping,
         isPlayerTurn
     };
+
+    window.typer.initialized = true;
 } 

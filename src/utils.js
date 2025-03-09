@@ -2,19 +2,22 @@
  * utils.js - Utility functions for Bomb Party Suggester
  */
 
-// Only define functions if they don't already exist (prevents redeclaration)
-if (!window.utils) {
-    // Helper function for normal distribution
-    const normalRandom = (mean, stdDev) => {
-        // Box-Muller transform for normal distribution
+// only define utils if it doesn't already exist (prevents redeclaration)
+window.utils = window.utils || {};
+
+// only add functions if they don't exist
+if (!window.utils.normalRandom) {
+    // helper function for normal distribution
+    window.utils.normalRandom = (mean, stdDev) => {
+        // box-muller transform for normal distribution
         const u1 = Math.random();
         const u2 = Math.random();
         const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
         return mean + z * stdDev;
     };
 
-    // Helper function to apply styles to an element
-    const applyStyles = (element, styleObj) => {
+    // helper function to apply styles to an element
+    window.utils.applyStyles = (element, styleObj) => {
         Object.assign(element.style, styleObj);
     };
 
