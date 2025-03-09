@@ -358,6 +358,7 @@
         slider.max = max;
         slider.step = step;
         slider.value = BombPartySuggesterConfig.getValue(key);
+        slider.dataset.settingKey = key;
         BombPartySuggesterStyles.applyStyles(slider, BombPartySuggesterStyles.styles.settingsSlider);
 
         const input = document.createElement('input');
@@ -366,6 +367,7 @@
         input.step = step;
         input.min = min;
         input.max = max;
+        input.dataset.settingKey = key;
         BombPartySuggesterStyles.applyStyles(input, BombPartySuggesterStyles.styles.settingsInput);
 
         const updateValue = (newValue) => {
@@ -397,10 +399,11 @@
             const label = group.querySelector('label');
             if (!label) return;
 
-            const setting = settings.find(s => s.label === label.textContent);
-            if (!setting) return;
+            // Get the key from the input's data attribute
+            const key = input.dataset.settingKey;
+            if (!key) return;
 
-            input.value = BombPartySuggesterConfig.getValue(setting.key);
+            input.value = BombPartySuggesterConfig.getValue(key);
         });
     };
 

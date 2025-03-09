@@ -9,8 +9,8 @@
 // @require      https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/styles.js
 // @require      https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/config.js
 // @require      https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/dictionary.js
-// @require      https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/ui.js
 // @require      https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/typing.js
+// @require      https://raw.githubusercontent.com/Doomsy1/Bomb-Party-Suggester/main/src/ui.js
 // ==/UserScript==
 
 (function() {
@@ -26,6 +26,15 @@
 
     // Main initialization function
     const init = () => {
+        // Wait for all modules to be loaded
+        if (!window.BombPartySuggesterStyles || !window.BombPartySuggesterConfig || 
+            !window.BombPartySuggesterDict || !window.BombPartySuggesterTyping || 
+            !window.BombPartySuggesterUI) {
+            console.log("[BombPartySuggester] Waiting for modules to load...");
+            setTimeout(init, 100);
+            return;
+        }
+
         // Create UI components
         const { resultsDiv } = BombPartySuggesterUI.createUI();
 
