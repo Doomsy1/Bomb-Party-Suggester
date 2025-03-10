@@ -41,6 +41,4 @@ Word lists from:
 - [Google 10000 English](https://github.com/first20hours/google-10000-english)
 - [ENABLE Dictionary](https://github.com/dolph/dictionary)
 
-## License
-
-MIT
+http-server -p 8080 -c-1

@@ -1,4 +1,4 @@
-// ui.js
+// src/ui.js
 window.BPS = window.BPS || {};
 
 (function() {

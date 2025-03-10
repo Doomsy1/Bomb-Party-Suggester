@@ -1,4 +1,4 @@
-// uiDragResize.js
+// src/uiDragResize.js
 window.BPS = window.BPS || {};
 
 (function() {

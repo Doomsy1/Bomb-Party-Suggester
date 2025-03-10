@@ -1,4 +1,4 @@
-// styles.js
+// src/styles.js
 window.BPS = window.BPS || {};
 
 (function() {

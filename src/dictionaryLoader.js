@@ -1,4 +1,4 @@
-// dictionaryLoader.js
+// src/dictionaryLoader.js
 window.BPS = window.BPS || {};
 
 (function(){
@@ -14,8 +14,8 @@ window.BPS = window.BPS || {};
             words: [],
             hasFrequency: true
         },
-        '170k': {
-            url: 'https://raw.githubusercontent.com/dolph/dictionary/master/enable1.txt',
+        '273k': {
+            url: 'https://raw.githubusercontent.com/kli512/bombparty-assist/refs/heads/main/bombparty/dictionaries/en.txt',
             words: [],
             hasFrequency: false
         }
@@ -39,7 +39,7 @@ window.BPS = window.BPS || {};
                         const freq = parseInt(parts[3], 10) || 0;
                         return { word, freq };
                     });
-                } else if (size === '170k') {
+                } else if (size === '273k') {
                     // Big dictionary
                     dictionaries[size].words = lines
                         .filter(line => line.trim().length > 0)
@@ -65,7 +65,7 @@ window.BPS = window.BPS || {};
             await Promise.all([
                 loadDictionary('5k'),
                 loadDictionary('20k'),
-                loadDictionary('170k')
+                loadDictionary('273k')
             ]);
             console.log("[BombPartySuggester] All dictionaries loaded.");
         } catch (err) {

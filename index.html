@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bomb Party Suggester - Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .files {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        ul {
+            list-style-type: none;
+            padding-left: 10px;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bomb Party Suggester - Server Test</h1>
+    
+    <p>This page tests whether your server is correctly serving files for the Bomb Party Suggester.</p>
+    
+    <h2>Source Files Status:</h2>
+    <div class="files">
+        <ul id="filesList">
+            <li>Checking files...</li>
+        </ul>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const filesList = document.getElementById('filesList');
+            const files = [
+                'src/styles.js',
+                'src/typer.js',
+                'src/dictionaryLoader.js',
+                'src/uiDragResize.js',
+                'src/uiSettings.js',
+                'src/uiSuggester.js',
+                'src/uiObserver.js',
+                'src/ui.js'
+            ];
+            
+            filesList.innerHTML = '';
+            
+            files.forEach(file => {
+                const li = document.createElement('li');
+                li.textContent = `${file}: Testing...`;
+                filesList.appendChild(li);
+                
+                fetch(file)
+                    .then(response => {
+                        if (response.ok) {
+                            li.innerHTML = `${file}: <span class="success">Loaded OK</span>`;
+                        } else {
+                            li.innerHTML = `${file}: <span class="error">Failed (${response.status})</span>`;
+                        }
+                    })
+                    .catch(error => {
+                        li.innerHTML = `${file}: <span class="error">Error: ${error.message}</span>`;
+                    });
+            });
+        });
+    </script>
+</body>
+</html> 

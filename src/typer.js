@@ -1,4 +1,4 @@
-// typer.js
+// src/typer.js
 window.BPS = window.BPS || {};
 
 (function(){

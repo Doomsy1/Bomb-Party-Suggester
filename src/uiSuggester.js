@@ -1,4 +1,4 @@
-// uiSuggester.js
+// src/uiSuggester.js
 window.BPS = window.BPS || {};
 
 (function() {
@@ -113,14 +113,14 @@ window.BPS = window.BPS || {};
     }
 
     /**
-     * Create the dictionary size selector UI (5k, 20k, 170k), 
+     * Create the dictionary size selector UI (5k, 20k, 273k), 
      * hooking up the button logic to switch dictionaries.
      */
     function createDictionarySizeSelector() {
         const container = document.createElement('div');
         applyStyles(container, styles.sizeSelector);
 
-        ['5k','20k','170k'].forEach(dictSize => {
+        ['5k','20k','273k'].forEach(dictSize => {
             const btn = document.createElement('button');
             btn.textContent = dictSize;
             applyStyles(btn, styles.button);
