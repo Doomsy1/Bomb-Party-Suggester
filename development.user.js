@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Bomb Party Suggester (Development)
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.1.0
 // @description  Combined development script for Bomb Party Suggester
 // @match        *.jklm.fun/games/bombparty*
 // @grant        none
@@ -26,14 +26,14 @@
     
     // define all our dependencies
     const dependencies = [
-        'http://localhost:8080/src/styles.js',
-        'http://localhost:8080/src/typer.js',
-        'http://localhost:8080/src/dictionaryLoader.js',
-        'http://localhost:8080/src/uiDragResize.js',
-        'http://localhost:8080/src/uiSettings.js',
-        'http://localhost:8080/src/uiSuggester.js',
-        'http://localhost:8080/src/uiObserver.js',
-        'http://localhost:8080/src/ui.js'
+        'http://localhost:8080/src/ui/styles.js',
+        'http://localhost:8080/src/core/typer.js',
+        'http://localhost:8080/src/core/dictionaryLoader.js',
+        'http://localhost:8080/src/ui/dragResize.js',
+        'http://localhost:8080/src/ui/settings.js',
+        'http://localhost:8080/src/ui/suggester.js',
+        'http://localhost:8080/src/ui/observer.js',
+        'http://localhost:8080/src/ui/main.js'
     ];
     
     // load all dependencies in sequence

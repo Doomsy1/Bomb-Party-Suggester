@@ -1,4 +1,4 @@
-// src/uiObserver.js
+// src/ui/observer.js
 window.BPS = window.BPS || {};
 
 (function() {

@@ -1,4 +1,4 @@
-// src/uiSettings.js
+// src/ui/settings.js
 window.BPS = window.BPS || {};
 
 (function() {
@@ -10,7 +10,7 @@ window.BPS = window.BPS || {};
     const saveSettings = window.BPS.saveSettings;
     const loadSavedSettings = window.BPS.loadSavedSettings;
 
-    // Pull in the shared makeDraggable from uiDragResize.js
+    // Pull in the shared makeDraggable from dragResize.js
     const makeDraggable = window.BPS.makeDraggable;
 
     /**

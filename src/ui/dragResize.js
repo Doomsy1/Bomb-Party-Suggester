@@ -1,4 +1,4 @@
-// src/uiDragResize.js
+// src/ui/dragResize.js
 window.BPS = window.BPS || {};
 
 (function() {
@@ -16,7 +16,7 @@ window.BPS = window.BPS || {};
 
         element.addEventListener('mousedown', (e) => {
             const tag = e.target.tagName.toLowerCase();
-            // Don’t drag if clicking on a button or input
+            // Don't drag if clicking on a button or input
             if (tag === 'button' || tag === 'input') return;
 
             isDragging = true;
@@ -41,7 +41,7 @@ window.BPS = window.BPS || {};
 
     /**
      * Adds corner & edge resize handles to a panel, then wires up logic
-     * to resize the panel by dragging them. Also includes standard “drag entire panel” logic.
+     * to resize the panel by dragging them. Also includes standard "drag entire panel" logic.
      */
     function setupDraggableResize(panel) {
         // Corner handles
@@ -130,7 +130,7 @@ window.BPS = window.BPS || {};
                 panelLeft = rect.left;
                 panelTop = rect.top;
                 e.preventDefault();
-                e.stopPropagation(); // don’t trigger panel-dragging
+                e.stopPropagation(); // don't trigger panel-dragging
             });
         });
 

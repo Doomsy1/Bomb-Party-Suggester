@@ -1,4 +1,4 @@
-// src/uiSuggester.js
+// src/ui/suggester.js
 window.BPS = window.BPS || {};
 
 (function() {
@@ -16,10 +16,11 @@ window.BPS = window.BPS || {};
 
     // For letter-based 'rarity' scoring
     const letterScores = {
-        'e': 1, 't': 2, 'a': 3, 'o': 4, 'i': 5, 'n': 6, 's': 7, 'h': 8, 'r': 9,
-        'd': 10, 'l': 11, 'u': 12, 'c': 13, 'm': 14, 'w': 15, 'f': 16, 'g': 17,
-        'y': 18, 'p': 19, 'b': 20, 'v': 21, 'k': 22, 'j': 23, 'x': 24, 'q': 25, 'z': 26
+        'e': 1, 't': 2, 'a': 3, 'o': 4, 'i': 5, 'n': 6, 's': 7, 'r': 8, 'h': 9,
+        'd': 10, 'l': 11, 'u': 12, 'c': 13, 'm': 14, 'f': 15, 'y': 16, 'w': 17,
+        'g': 18, 'p': 19, 'b': 20, 'v': 21, 'k': 22, 'x': 23, 'q': 24, 'j': 25, 'z': 26
     };
+
 
     function calculateRarityScore(word) {
         return word.toLowerCase().split('').reduce((score, letter) => {
