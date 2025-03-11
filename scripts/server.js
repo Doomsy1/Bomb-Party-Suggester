@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 8080;
+const rootDir = path.resolve(__dirname, '..');
 
 // MIME types for different file extensions
 const MIME_TYPES = {
@@ -26,9 +27,9 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   // Parse the URL to get the file path
-  let filePath = '.' + req.url;
-  if (filePath === './') {
-    filePath = './index.html';
+  let filePath = path.join(rootDir, req.url.substring(1));
+  if (req.url === '/') {
+    filePath = path.join(rootDir, 'index.html');
   }
   
   // Get the file extension

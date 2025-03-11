@@ -2,10 +2,10 @@
   "name": "bomb-party-suggester",
   "version": "1.0.0",
   "description": "A helper tool for Bomb Party",
-  "main": "server.js",
+  "main": "scripts/server.js",
   "scripts": {
-    "start": "node server.js",
-    "build": "node esbuild.config.js"
+    "start": "node scripts/server.js",
+    "build": "node config/esbuild.config.js"
   },
   "author": "",
   "license": "MIT",

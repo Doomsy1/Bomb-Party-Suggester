@@ -22,40 +22,50 @@ window.BPS = window.BPS || {};
     };
 
     async function loadDictionary(size) {
-        const response = await fetch(dictionaries[size].url);
+        const dictionary = dictionaries[size];
+        const response = await fetch(dictionary.url);
         const text = await response.text();
         const lines = text.split('\n');
-
-        if (dictionaries[size].url.endsWith('.csv')) {
-            // For the 5k CSV
-            const dataLines = lines.slice(1); // skip header line
-            dictionaries[size].words = dataLines.map(line => {
-                const trimmed = line.trim();
-                if (!trimmed) return { word: '', freq: 0 };
-                const parts = trimmed.split(',');
-                if (parts.length < 4) return { word: '', freq: 0 };
-                const word = parts[1] || '';
-                const freq = parseInt(parts[3], 10) || 0;
-                return { word, freq };
-            });
-        } else if (size === '273k') {
-            // Big dictionary
-            dictionaries[size].words = lines
-                .filter(line => line.trim().length > 0)
-                .map(line => ({
-                    word: line.trim().toLowerCase(),
-                    freq: 1  // treat them all equally
+        
+        switch(size) {
+            case '5k':
+                const dataLines = lines.slice(1); // skip header line
+                dictionary.words = dataLines.map(line => {
+                    const trimmed = line.trim();
+                    if (!trimmed) return { word: '', freq: 0 };
+                    
+                    const parts = trimmed.split(',');
+                    if (parts.length < 4) return { word: '', freq: 0 };
+                    
+                    const word = parts[1] || '';
+                    const freq = parseInt(parts[3], 10) || 0;
+                    return { word, freq };
+                });
+                break;
+                
+            case '20k':
+                dictionary.words = lines.map((line, idx) => ({
+                    word: line.trim(),
+                    freq: lines.length - idx  // higher index = less frequent
                 }));
-        } else {
-            // 20k dictionary
-            dictionaries[size].words = lines.map((line, idx) => ({
-                word: line.trim(),
-                freq: lines.length - idx  // so top lines are 'most common'
-            }));
+                break;
+                
+            case '273k':
+                dictionary.words = lines
+                    .filter(line => line.trim().length > 0)
+                    .map(line => ({
+                        word: line.trim().toLowerCase(),
+                        freq: 1  // treat all words equally
+                    }));
+                break;
+                
+            default:
+                console.error(`[BombPartySuggester] Unknown dictionary size: ${size}`);
+                return;
         }
 
-        dictionaries[size].words = dictionaries[size].words.filter(e => e.word);
-        console.log(`[BombPartySuggester] Loaded dictionary ${size}: ${dictionaries[size].words.length} words.`);
+        dictionary.words = dictionary.words.filter(entry => entry.word);
+        console.log(`[BombPartySuggester] Loaded dictionary ${size}: ${dictionary.words.length} words.`);
     }
 
     async function loadAllDictionaries() {
