@@ -1,14 +1,13 @@
 # Bomb Party Helper
 
-Enhance your gameplay on [Bomb Party](https://jklm.fun) by quickly finding word suggestions during your turn!
+Enhance your skills on [Bomb Party](https://jklm.fun) by quickly finding word suggestions during your turn!
 
 ---
 
 ## Features
 
-- **Instant Word Suggestions** (sorted by frequency, length, or value)
+- **Word Suggestions** (sorted by frequency, length, or value)
 - **Auto-Typing**: Click-to-enter suggested words
-- **Customizable UI**: Move, resize, and theme your helper
 - **Easy Setup**: Instantly activates when playing Bomb Party
 
 ---
